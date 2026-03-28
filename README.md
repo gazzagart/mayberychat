@@ -1,122 +1,375 @@
-![Screenshot](https://github.com/krille-chan/fluffychat/blob/main/assets/banner_transparent.png?raw=true)
+# LetsYak
 
-[FluffyChat](https://fluffy.chat) is an open source, nonprofit and cute [[matrix](https://matrix.org)] client written in [Flutter](https://flutter.dev). The goal of the app is to create an easy to use instant messenger which is open source and accessible for everyone.
-
-### Links:
-
-- 🌐 [[Weblate] Translate FluffyChat into your language](https://hosted.weblate.org/projects/fluffychat/)
-- 🌍 [[m] Join the community](https://matrix.to/#/#fluffy-space:matrix.org)
-- 📰 [[Mastodon] Get updates on social media](https://troet.cafe/@krille)
-- 🖥️ [[Famedly] Server hosting and professional support](https://famedly.com/kontakt)
-- 💝 [[Liberapay] Support FluffyChat development](https://de.liberapay.com/KrilleChritzelius)
-
-<a href='https://ko-fi.com/C1C86VN53' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi5.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-
-### Screenshots:
-
-<img src="https://github.com/krille-chan/fluffychat-website/blob/main/src/assets/screenshots/mobile.png?raw=true" height="300">
-<img src="https://github.com/krille-chan/fluffychat-website/blob/main/src/assets/screenshots/desktop.png?raw=true" height="300">
+LetsYak is an open source [Matrix](https://matrix.org) chat client built with [Flutter](https://flutter.dev). It is designed to be a clean, easy-to-use messenger with end-to-end encryption, cross-platform support, and a modern Material You interface.
 
 # Features
 
-- 📩 Send all kinds of messages, images and files
+- 📩 Send messages, images, and files
 - 🎙️ Voice messages
 - 📍 Location sharing
 - 🔔 Push notifications
 - 💬 Unlimited private and public group chats
 - 📣 Public channels with thousands of participants
-- 🛠️ Feature rich group moderation including all matrix features
+- 🛠️ Full Matrix group moderation tools
 - 🔍 Discover and join public groups
 - 🌙 Dark mode
 - 🎨 Material You design
-- 📟 Hides complexity of Matrix IDs behind simple QR codes
+- 📟 Simple QR code sharing of Matrix IDs
 - 😄 Custom emotes and stickers
 - 🌌 Spaces
-- 🔄 Compatible with Element, Nheko, NeoChat and all other Matrix apps
-- 🔐 End to end encryption
+- 🔄 Compatible with Element, Nheko, NeoChat and all other Matrix clients
+- 🔐 End-to-end encryption
 - 🔒 Encrypted chat backup
 - 😀 Emoji verification & cross signing
 
-... and much more.
+---
 
+# How to Build
 
-# Installation
+## 1. Prerequisites
 
-Please visit the website for installation instructions:
+### Flutter
 
-- https://fluffy.chat
+Install Flutter by following the official guide for your platform: https://docs.flutter.dev/get-started/install
 
-# How to build
-
-1. To build FluffyChat you need [Flutter](https://flutter.dev) and [Rust](https://www.rust-lang.org/tools/install)
-
-2. Clone the repo:
+Verify your installation:
+```bash
+flutter doctor
 ```
-git clone https://github.com/krille-chan/fluffychat.git
-cd fluffychat
+
+All required items should show a green checkmark before proceeding. Fix any issues reported before continuing.
+
+---
+
+### Rust (required for all platforms)
+
+Rust is required to compile the Vodozemac cryptography library.
+
+**macOS / Linux:**
+```bash
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+source "$HOME/.cargo/env"
 ```
-3. Choose your target platform below and enable support for it.
-3.1 If you want, enable Googles Firebase Cloud Messaging:
 
-`./scripts/add-firebase-messaging.sh`
+**Windows (PowerShell — run as Administrator):**
 
-4. Debug with: `flutter run`
+Download and run the official installer from https://rustup.rs, then restart your terminal.
+
+Verify Rust is installed:
+```bash
+rustc --version
+cargo --version
+```
+
+Then install the nightly toolchain and the `rust-src` component (required for Wasm compilation):
+
+**macOS (Apple Silicon / arm64):**
+```bash
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly-aarch64-apple-darwin
+```
+
+**macOS (Intel / x86_64):**
+```bash
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly-x86_64-apple-darwin
+```
+
+**Linux (arm64):**
+```bash
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly-aarch64-unknown-linux-gnu
+```
+
+**Linux (x86_64):**
+```bash
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+```
+
+**Windows:**
+```powershell
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly-x86_64-pc-windows-msvc
+```
+
+---
+
+### yq (required for the web prepare script)
+
+**macOS:**
+```bash
+brew install yq
+```
+
+**Linux (Debian/Ubuntu):**
+```bash
+sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+sudo chmod +x /usr/bin/yq
+```
+
+**Windows:**
+```powershell
+choco install yq
+```
+> If you do not have Chocolatey, install it from https://chocolatey.org/install
+
+---
+
+## 2. Clone the Repository
+
+```bash
+git clone https://github.com/garethmaybery/mayberychat.git
+cd mayberychat
+```
+
+---
+
+## 3. Build for Your Platform
+
+---
 
 ### Android
 
-* Build with: `flutter build apk`
+**Additional prerequisites:** Android Studio with the Android SDK installed. See https://docs.flutter.dev/get-started/install/macos/mobile-android
+
+**Steps:**
+
+```bash
+flutter pub get
+flutter build apk --release
+```
+
+The output APK will be at:
+```
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+To build an App Bundle for the Play Store:
+```bash
+flutter build appbundle --release
+```
+
+> Optionally enable Firebase Cloud Messaging first:
+> ```bash
+> ./scripts/add-firebase-messaging.sh
+> ```
+
+---
 
 ### iOS / iPadOS
 
-* Have a Mac with Xcode installed, and set up for Xcode-managed app signing
-* If you want automatic app installation to connected devices, make sure you have Apple Configurator installed, with the Automation Tools (`cfgutil`) enabled
-* Set a few environment variables
-    * FLUFFYCHAT_NEW_TEAM: the Apple Developer team that your certificates should live under
-    * FLUFFYCHAT_NEW_GROUP: the group you want App IDs and such to live under (ie: com.example.fluffychat)
-    * FLUFFYCHAT_INSTALL_IPA: set to `1` if you want the IPA to be deployed to connected devices after building, otherwise unset
-* Run `./scripts/build-ios.sh`
+> **Requires macOS with Xcode installed.**
 
-### Web
-
-* Build with:
+**Additional prerequisites:**
 ```bash
-./scripts/prepare-web.sh # To install Vodozemac
-flutter build web --release
+brew install cocoapods
 ```
 
-* Optionally configure by serving a `config.json` at the same path as fluffychat.
-  An example can be found at `config.sample.json`. All values there are optional.
-  **Please only the values, you really need**. If you e.g. only want
-  to change the default homeserver, then only modify the `defaultHomeserver` key.
-
-### Desktop (Linux, Windows, macOS)
-
-* Enable Desktop support in Flutter: https://flutter.dev/desktop
-
-#### Install custom dependencies (Linux)
+**Steps:**
 
 ```bash
-sudo apt install libjsoncpp1 libsecret-1-dev libsecret-1-0 librhash0 libwebkit2gtk-4.0-dev lld
+flutter pub get
+cd ios && pod install && cd ..
+flutter build ios --release
 ```
 
-* Build with one of these:
+Or use the provided script which handles bundle ID and team rotation:
+
+1. Set optional environment variables:
+   ```bash
+   export FLUFFYCHAT_NEW_GROUP="com.yourcompany.letsyak"   # Your app bundle ID
+   export FLUFFYCHAT_NEW_TEAM="YOURTEAMID"                 # Your Apple Developer Team ID
+   export FLUFFYCHAT_INSTALL_IPA=1                         # Optional: auto-install to device
+   ```
+2. Run the build script:
+   ```bash
+   ./scripts/build-ios.sh
+   ```
+
+---
+
+### macOS (Desktop)
+
+> **Requires macOS with Xcode installed.**
+
+**Additional prerequisites:**
 ```bash
-flutter build linux --release
-flutter build windows --release
+brew install cocoapods
+flutter config --enable-macos-desktop
+```
+
+**Steps:**
+
+```bash
+flutter pub get
+cd macos && pod install && cd ..
 flutter build macos --release
 ```
 
+Or use the provided script:
 
-# Special thanks
+1. Set optional environment variables:
+   ```bash
+   export FLUFFYCHAT_NEW_GROUP="com.yourcompany.letsyak"
+   export FLUFFYCHAT_NEW_TEAM="YOURTEAMID"
+   ```
+2. Run:
+   ```bash
+   ./scripts/build-macos.sh
+   ```
 
-* <a href="https://github.com/fabiyamada">Fabiyamada</a> is a graphics designer and has made the fluffychat logo and the banner. Big thanks for her great designs.
+The output app will be at:
+```
+build/macos/Build/Products/Release/LetsYak.app
+```
 
-* <a href="https://github.com/advocatux">Advocatux</a> has made the Spanish translation with great love and care. He always stands by my side and supports my work with great commitment.
+---
 
-* Thanks to MTRNord and Sorunome for developing.
+### Web
 
-* Also thanks to all translators and testers! With your help, fluffychat is now available in more than 12 languages.
+The web build requires compiling the Vodozemac cryptography library to WebAssembly using Rust. The `prepare-web.sh` script handles this automatically.
 
-* <a href="https://github.com/madsrh/WoodenBeaver">WoodenBeaver</a> sound theme for the notification sound.
+**Additional prerequisites (macOS):**
+```bash
+brew install yq
+```
 
-* The Matrix Foundation for making and maintaining the [emoji translations](https://github.com/matrix-org/matrix-spec/blob/main/data-definitions/sas-emoji.json) used for emoji verification, licensed Apache 2.0
+**Additional prerequisites (Linux):**
+```bash
+sudo apt install curl wget jq build-essential
+sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+sudo chmod +x /usr/bin/yq
+```
+
+**Steps:**
+
+```bash
+flutter pub get
+./scripts/prepare-web.sh
+flutter build web --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps
+```
+
+The output will be in `build/web/`. Serve it with any static file server, e.g.:
+```bash
+cd build/web && python3 -m http.server 8080
+```
+
+#### Docker (Web)
+
+A `Dockerfile` is included. Build and run with:
+
+```bash
+docker build -t letsyak-web:latest .
+docker run -p 8080:80 letsyak-web:latest
+```
+
+Then open http://localhost:8080 in your browser.
+
+#### Configuration (Web)
+
+Optionally serve a `config.json` at the same path as the app to customise it.  
+See `config.sample.json` for all available options — all values are optional.  
+Only include keys you actually want to change. For example, to set the default homeserver:
+
+```json
+{
+  "defaultHomeserver": "matrix.example.com"
+}
+```
+
+---
+
+### Linux (Desktop)
+
+**Additional prerequisites (Debian/Ubuntu):**
+```bash
+sudo apt install libjsoncpp1 libsecret-1-dev libsecret-1-0 librhash0 libwebkit2gtk-4.0-dev lld
+flutter config --enable-linux-desktop
+```
+
+**Steps:**
+
+```bash
+flutter pub get
+flutter build linux --release
+```
+
+The output binary will be at:
+```
+build/linux/x64/release/bundle/
+```
+
+---
+
+### Windows (Desktop)
+
+> **Requires Windows 10 or later with Visual Studio 2022 installed, including the "Desktop development with C++" workload.**  
+> See https://docs.flutter.dev/get-started/install/windows/desktop
+
+**Additional prerequisites (PowerShell — run as Administrator):**
+```powershell
+# Install Chocolatey if not already installed:
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Then install yq
+choco install yq
+```
+
+Enable Windows desktop support:
+```powershell
+flutter config --enable-windows-desktop
+```
+
+**Steps:**
+
+```powershell
+flutter pub get
+flutter build windows --release
+```
+
+Or use the provided script:
+```powershell
+.\scripts\build-windows.ps1
+```
+
+The output will be at:
+```
+build\windows\x64\runner\Release\
+```
+
+---
+
+## 4. Running in Debug Mode
+
+For any platform, after running `flutter pub get`, start a debug session with:
+
+```bash
+flutter run
+```
+
+To target a specific device:
+```bash
+flutter devices          # list available devices
+flutter run -d chrome    # web
+flutter run -d macos     # macOS desktop
+flutter run -d windows   # Windows desktop
+flutter run -d linux     # Linux desktop
+```
+
+---
+
+# License
+
+This project is licensed under the AGPL-3.0 License. See [LICENSE](LICENSE) for details.
+
+---
+
+# Acknowledgements
+
+LetsYak is built on top of [FluffyChat](https://github.com/krille-chan/fluffychat) by [krille-chan](https://github.com/krille-chan).
+
+- The Matrix Foundation for the [emoji translations](https://github.com/matrix-org/matrix-spec/blob/main/data-definitions/sas-emoji.json) used for emoji verification, licensed Apache 2.0
+- <a href="https://github.com/madsrh/WoodenBeaver">WoodenBeaver</a> sound theme for the notification sound
