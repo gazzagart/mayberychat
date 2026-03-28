@@ -242,12 +242,34 @@ sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd6
 sudo chmod +x /usr/bin/yq
 ```
 
+**Additional prerequisites (Windows — PowerShell as Administrator):**
+```powershell
+choco install yq
+```
+
 **Steps:**
 
 ```bash
 flutter pub get
+# Install yq first if not already installed:
+#   macOS:   brew install yq
+#   Linux:   see prerequisites above
+#   Windows: choco install yq  (then run the script via Git Bash or WSL)
 ./scripts/prepare-web.sh
 flutter build web --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps
+```
+
+**To run in debug mode (Chrome):**
+
+> `prepare-web.sh` must be run at least once before `flutter run -d chrome` will work.
+
+```bash
+# Install yq first if not already installed:
+#   macOS:   brew install yq
+#   Linux:   see prerequisites above
+#   Windows: choco install yq  (then run via Git Bash or WSL)
+./scripts/prepare-web.sh
+flutter run -d chrome
 ```
 
 The output will be in `build/web/`. Serve it with any static file server, e.g.:
@@ -314,8 +336,11 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-# Then install yq
+# Install yq (required for prepare-web.sh)
 choco install yq
+
+# Install Git for Windows (provides Git Bash, required to run .sh scripts)
+choco install git
 ```
 
 Enable Windows desktop support:
@@ -333,6 +358,35 @@ flutter build windows --release
 Or use the provided script:
 ```powershell
 .\scripts\build-windows.ps1
+```
+
+#### Running prepare-web.sh on Windows
+
+The `prepare-web.sh` script requires a Unix shell. Run it via **Git Bash** (installed above):
+
+1. Open **Git Bash** (search for it in the Start menu)
+2. Navigate to the project directory:
+   ```bash
+   cd /c/path/to/mayberychat
+   ```
+3. Run the script:
+   ```bash
+   ./scripts/prepare-web.sh
+   ```
+
+Alternatively, if you have **WSL (Windows Subsystem for Linux)** installed, you can run it there:
+```bash
+wsl
+cd /mnt/c/path/to/mayberychat
+./scripts/prepare-web.sh
+```
+
+**To run in debug mode (Chrome) on Windows:**
+
+> `prepare-web.sh` must be run at least once (via Git Bash or WSL) before `flutter run -d chrome` will work.
+
+```powershell
+flutter run -d chrome
 ```
 
 The output will be at:
@@ -353,11 +407,18 @@ flutter run
 To target a specific device:
 ```bash
 flutter devices          # list available devices
-flutter run -d chrome    # web
+flutter run -d chrome    # web (see note below)
 flutter run -d macos     # macOS desktop
 flutter run -d windows   # Windows desktop
 flutter run -d linux     # Linux desktop
 ```
+
+> **Web note:** Before running `flutter run -d chrome` for the first time, you must run the web preparation steps:
+> ```bash
+> brew install yq          # macOS — skip if already installed
+> ./scripts/prepare-web.sh
+> ```
+> On Windows, run `./scripts/prepare-web.sh` via Git Bash or WSL first (see the Windows section above).
 
 ---
 
