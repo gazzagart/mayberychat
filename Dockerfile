@@ -8,9 +8,14 @@ RUN mv yq_linux_amd64 /usr/bin/yq
 
 COPY . /app
 WORKDIR /app
+ARG TARGETARCH
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      rustup component add rust-src --toolchain nightly-aarch64-unknown-linux-gnu; \
+    else \
+      rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu; \
+    fi
 RUN ./scripts/prepare-web.sh
 COPY config.* /app/
 RUN flutter pub get
