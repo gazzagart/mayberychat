@@ -1,4 +1,4 @@
-appId: chat.fluffy.fluffychat
+appId: com.letsyak.app
 ---
 - extendedWaitUntil: # Wait for app to be visible
     visible: "Sign in"

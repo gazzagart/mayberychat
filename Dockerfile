@@ -17,5 +17,6 @@ RUN flutter pub get
 RUN flutter build web --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps
 
 FROM docker.io/nginx:alpine
-RUN rm -rf /usr/share/nginx/html
+RUN rm -rf /usr/share/nginx/html /etc/nginx/conf.d/default.conf
+COPY deploy/web-nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/build/web /usr/share/nginx/html

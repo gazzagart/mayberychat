@@ -1,9 +1,9 @@
 {
-  "applicationName": "FluffyChat",
-  "defaultHomeserver": "matrix.org",
+  "applicationName": "LetsYak",
+  "defaultHomeserver": "https://chat.maybery.app",
   "presetHomeserver": "",
   "welcomeText": "",
-  "privacyUrl": "https://github.com/krille-chan/fluffychat/blob/main/PRIVACY.md",
+  "privacyUrl": "https://github.com/gazzagart/mayberychat/blob/main/PRIVACY.md",
   "audioRecordingNumChannels": 1,
   "audioRecordingAutoGain": true,
   "audioRecordingEchoCancel": false,
