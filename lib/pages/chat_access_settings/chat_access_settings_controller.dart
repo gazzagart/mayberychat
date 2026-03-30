@@ -1,8 +1,3 @@
-import 'package:flutter/material.dart' hide Visibility;
-
-import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart';
-
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_access_settings/chat_access_settings_page.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
@@ -11,6 +6,9 @@ import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.
 import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:fluffychat/widgets/matrix.dart';
+import 'package:flutter/material.dart' hide Visibility;
+import 'package:go_router/go_router.dart';
+import 'package:matrix/matrix.dart';
 
 class ChatAccessSettings extends StatefulWidget {
   final String roomId;
@@ -162,6 +160,7 @@ class ChatAccessSettingsController extends State<ChatAccessSettings> {
   }
 
   Future<void> updateRoomAction() async {
+    final l10n = L10n.of(context);
     final roomVersion = room
         .getState(EventTypes.RoomCreate)!
         .content
@@ -172,10 +171,11 @@ class ChatAccessSettingsController extends State<ChatAccessSettings> {
     );
     final capabilities = capabilitiesResult.result;
     if (capabilities == null) return;
+    if (!mounted) return;
     final newVersion = await showModalActionPopup<String>(
       context: context,
-      title: L10n.of(context).replaceRoomWithNewerVersion,
-      cancelLabel: L10n.of(context).cancel,
+      title: l10n.replaceRoomWithNewerVersion,
+      cancelLabel: l10n.cancel,
       actions: capabilities.mRoomVersions!.available.entries
           .where((r) => r.key != roomVersion)
           .map(
@@ -187,18 +187,20 @@ class ChatAccessSettingsController extends State<ChatAccessSettings> {
           )
           .toList(),
     );
-    if (newVersion == null ||
-        OkCancelResult.cancel ==
-            await showOkCancelAlertDialog(
-              context: context,
-              okLabel: L10n.of(context).yes,
-              cancelLabel: L10n.of(context).cancel,
-              title: L10n.of(context).areYouSure,
-              message: L10n.of(context).roomUpgradeDescription,
-              isDestructive: true,
-            )) {
+    if (newVersion == null) return;
+    if (!mounted) return;
+    final confirmUpgrade = await showOkCancelAlertDialog(
+      context: context,
+      okLabel: l10n.yes,
+      cancelLabel: l10n.cancel,
+      title: l10n.areYouSure,
+      message: l10n.roomUpgradeDescription,
+      isDestructive: true,
+    );
+    if (confirmUpgrade == OkCancelResult.cancel) {
       return;
     }
+    if (!mounted) return;
     final result = await showFutureLoadingDialog(
       context: context,
       futureWithProgress: (onProgress) async {
@@ -245,6 +247,7 @@ class ChatAccessSettingsController extends State<ChatAccessSettings> {
   }
 
   Future<void> addAlias() async {
+    final l10n = L10n.of(context);
     final domain = room.client.userID?.domain;
     if (domain == null) {
       throw Exception('userID or domain is null! This should never happen.');
@@ -252,11 +255,12 @@ class ChatAccessSettingsController extends State<ChatAccessSettings> {
 
     final input = await showTextInputDialog(
       context: context,
-      title: L10n.of(context).editRoomAliases,
+      title: l10n.editRoomAliases,
       prefixText: '#',
       suffixText: domain,
-      hintText: L10n.of(context).alias,
+      hintText: l10n.alias,
     );
+    if (!mounted) return;
     final aliasLocalpart = input?.trim();
     if (aliasLocalpart == null || aliasLocalpart.isEmpty) return;
     final alias = '#$aliasLocalpart:$domain';
@@ -266,17 +270,19 @@ class ChatAccessSettingsController extends State<ChatAccessSettings> {
       future: () => room.client.setRoomAlias(alias, room.id),
     );
     if (result.error != null) return;
+    if (!mounted) return;
     setState(() {});
 
     if (!room.canChangeStateEvent(EventTypes.RoomCanonicalAlias)) return;
 
     final canonicalAliasConsent = await showOkCancelAlertDialog(
       context: context,
-      title: L10n.of(context).setAsCanonicalAlias,
+      title: l10n.setAsCanonicalAlias,
       message: alias,
-      okLabel: L10n.of(context).yes,
-      cancelLabel: L10n.of(context).no,
+      okLabel: l10n.yes,
+      cancelLabel: l10n.no,
     );
+    if (!mounted) return;
 
     final altAliases =
         room

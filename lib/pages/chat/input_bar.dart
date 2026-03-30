@@ -1,15 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:matrix/matrix.dart';
-import 'package:slugify/slugify.dart';
-
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/markdown_context_builder.dart';
 import 'package:fluffychat/widgets/mxc_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:matrix/matrix.dart';
+import 'package:slugify/slugify.dart';
+
 import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
 import 'command_hints.dart';
@@ -385,6 +384,7 @@ class InputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Autocomplete<Map<String, String?>>(
+      key: Key('chat_input_field'),
       focusNode: focusNode,
       textEditingController: controller,
       optionsBuilder: getSuggestions,
@@ -392,6 +392,10 @@ class InputBar extends StatelessWidget {
         controller: controller,
         focusNode: focusNode,
         readOnly: readOnly,
+        onEditingComplete: () {
+          // To not lose focus on iOS:
+          // https://github.com/krille-chan/fluffychat/issues/2784
+        },
         contextMenuBuilder: (c, e) => MarkdownContextBuilder(
           editableTextState: e,
           controller: controller,

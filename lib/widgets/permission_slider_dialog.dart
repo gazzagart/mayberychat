@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/dialog_text_field.dart';
+import 'package:flutter/material.dart';
 
 Future<int?> showPermissionChooser(
   BuildContext context, {
@@ -20,7 +19,7 @@ Future<int?> showPermissionChooser(
         child: Column(
           mainAxisSize: .min,
           crossAxisAlignment: .stretch,
-          spacing: 12.0,
+          spacing: 16.0,
           children: [
             Text(L10n.of(context).setPowerLevelDescription),
             ValueListenableBuilder(

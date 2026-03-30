@@ -1,14 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-
 import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:matrix/encryption.dart';
-import 'package:matrix/matrix.dart';
-
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/file_selector.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
@@ -16,6 +9,12 @@ import 'package:fluffychat/widgets/adaptive_dialogs/show_modal_action_popup.dart
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:matrix/encryption.dart';
+import 'package:matrix/matrix.dart';
+
 import '../../widgets/matrix.dart';
 import 'settings_view.dart';
 
@@ -36,18 +35,20 @@ class SettingsController extends State<Settings> {
   });
 
   Future<void> setDisplaynameAction() async {
+    final l10n = L10n.of(context);
+    final matrix = Matrix.of(context);
     final profile = await profileFuture;
+    if (!mounted) return;
     final input = await showTextInputDialog(
       useRootNavigator: false,
       context: context,
-      title: L10n.of(context).editDisplayname,
-      okLabel: L10n.of(context).ok,
-      cancelLabel: L10n.of(context).cancel,
-      initialText:
-          profile?.displayName ?? Matrix.of(context).client.userID!.localpart,
+      title: l10n.editDisplayname,
+      okLabel: l10n.ok,
+      cancelLabel: l10n.cancel,
+      initialText: profile?.displayName ?? matrix.client.userID!.localpart,
     );
     if (input == null) return;
-    final matrix = Matrix.of(context);
+    if (!mounted) return;
     final success = await showFutureLoadingDialog(
       context: context,
       future: () => matrix.client.setProfileField(
@@ -62,45 +63,47 @@ class SettingsController extends State<Settings> {
   }
 
   Future<void> logoutAction() async {
-    if (await showOkCancelAlertDialog(
-          useRootNavigator: false,
-          context: context,
-          title: L10n.of(context).areYouSureYouWantToLogout,
-          message: L10n.of(context).noBackupWarning,
-          isDestructive: cryptoIdentityConnected == false,
-          okLabel: L10n.of(context).logout,
-          cancelLabel: L10n.of(context).cancel,
-        ) ==
-        OkCancelResult.cancel) {
-      return;
-    }
+    final l10n = L10n.of(context);
     final matrix = Matrix.of(context);
+    final consent = await showOkCancelAlertDialog(
+      useRootNavigator: false,
+      context: context,
+      title: l10n.areYouSureYouWantToLogout,
+      message: l10n.noBackupWarning,
+      isDestructive: cryptoIdentityConnected == false,
+      okLabel: l10n.logout,
+      cancelLabel: l10n.cancel,
+    );
+    if (consent != OkCancelResult.ok) return;
+    if (!mounted) return;
     await showFutureLoadingDialog(
       context: context,
       future: () => matrix.client.logout(),
     );
-    context.go('/');
   }
 
   Future<void> setAvatarAction() async {
+    final l10n = L10n.of(context);
+    final matrix = Matrix.of(context);
     final profile = await profileFuture;
+    if (!mounted) return;
     final actions = [
       if (PlatformInfos.isMobile)
         AdaptiveModalAction(
           value: AvatarAction.camera,
-          label: L10n.of(context).openCamera,
+          label: l10n.openCamera,
           isDefaultAction: true,
           icon: const Icon(Icons.camera_alt_outlined),
         ),
       AdaptiveModalAction(
         value: AvatarAction.file,
-        label: L10n.of(context).openGallery,
+        label: l10n.openGallery,
         icon: const Icon(Icons.photo_outlined),
       ),
       if (profile?.avatarUrl != null)
         AdaptiveModalAction(
           value: AvatarAction.remove,
-          label: L10n.of(context).removeYourAvatar,
+          label: l10n.removeYourAvatar,
           isDestructive: true,
           icon: const Icon(Icons.delete_outlined),
         ),
@@ -109,12 +112,12 @@ class SettingsController extends State<Settings> {
         ? actions.single.value
         : await showModalActionPopup<AvatarAction>(
             context: context,
-            title: L10n.of(context).changeYourAvatar,
-            cancelLabel: L10n.of(context).cancel,
+            title: l10n.changeYourAvatar,
+            cancelLabel: l10n.cancel,
             actions: actions,
           );
     if (action == null) return;
-    final matrix = Matrix.of(context);
+    if (!mounted) return;
     if (action == AvatarAction.remove) {
       final success = await showFutureLoadingDialog(
         context: context,
@@ -136,6 +139,7 @@ class SettingsController extends State<Settings> {
       if (result == null) return;
       file = MatrixFile(bytes: await result.readAsBytes(), name: result.path);
     } else {
+      if (!mounted) return;
       final result = await selectFiles(context, type: FileType.image);
       final pickedFile = result.firstOrNull;
       if (pickedFile == null) return;
@@ -144,6 +148,7 @@ class SettingsController extends State<Settings> {
         name: pickedFile.name,
       );
     }
+    if (!mounted) return;
     final success = await showFutureLoadingDialog(
       context: context,
       future: () => matrix.client.setAvatar(file),
@@ -170,6 +175,7 @@ class SettingsController extends State<Settings> {
     }
 
     final state = await client.getCryptoIdentityState();
+    if (!mounted) return;
     setState(() {
       cryptoIdentityConnected = state.initialized && state.connected;
     });

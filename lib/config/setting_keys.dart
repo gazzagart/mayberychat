@@ -1,13 +1,11 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-
 import 'package:async/async.dart';
+import 'package:fluffychat/utils/platform_infos.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:fluffychat/utils/platform_infos.dart';
 
 enum AppSettings<T> {
   textMessageMaxLength<int>('textMessageMaxLength', 16384),
@@ -40,6 +38,8 @@ enum AppSettings<T> {
   showPresences<bool>('chat.fluffy.show_presences', true),
   displayNavigationRail<bool>('chat.fluffy.display_navigation_rail', false),
   experimentalVoip<bool>('chat.fluffy.experimental_voip', false),
+  jitsiFeature<bool>('chat.fluffy.enable_jitsi', false),
+  jitsiDomain<String>('chat.fluffy.jitsi_domain', 'meet.jit.si'),
   shareKeysWith<String>('chat.fluffy.share_keys_with_2', 'all'),
   noEncryptionWarningShown<bool>(
     'chat.fluffy.no_encryption_warning_shown',
@@ -59,16 +59,20 @@ enum AppSettings<T> {
   enableMatrixNativeOIDC<bool>('chat.fluffy.enable_matrix_native_oidc', false),
   presetHomeserver<String>('chat.fluffy.preset_homeserver', ''),
   welcomeText<String>('chat.fluffy.welcome_text', ''),
-  website<String>('chat.fluffy.website_url', 'https://fluffy.chat'),
+  website<String>('chat.fluffy.website_url', 'https://fluffychat.im'),
   logoUrl<String>(
     'chat.fluffy.logo_url',
-    'https://fluffy.chat/assets/favicon.png',
+    'https://fluffychat.im/assets/favicon.png',
   ),
   privacyPolicy<String>(
     'chat.fluffy.privacy_policy_url',
-    'https://fluffy.chat/en/privacy',
+    'https://fluffychat.im/en/privacy',
   ),
-  tos<String>('chat.fluffy.tos_url', 'https://fluffy.chat/en/tos');
+  tos<String>('chat.fluffy.tos_url', 'https://fluffychat.im/en/tos'),
+  sendTimelineEventTimeout<int>('chat.fluffy.send_timeline_event_timeout', 15),
+  lastSeenSupportBanner<int>('chat.fluffy.last_seen_support_banner', 0),
+  supportBannerOptOut<bool>('chat.fluffy.support_banner_opt_out', false),
+  webNotificationSound<bool>('chat.fluffy.web_notification_sound', true);
 
   final String key;
   final T defaultValue;

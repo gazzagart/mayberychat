@@ -1551,7 +1551,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "skip": "Überspringe",
+    "skip": "Überspringen",
     "@skip": {
         "type": "String",
         "placeholders": {}
@@ -2697,7 +2697,6 @@
             }
         }
     },
-    "donate": "Spenden",
     "resume": "Fortsetzen",
     "startedAPoll": "{username} hat eine Umfrage gestartet.",
     "@startedAPoll": {
@@ -2781,11 +2780,31 @@
     "createNewAccount": "Neues Konto erstellen",
     "signUpGreeting": "FluffyChat ist dezentral! Wähle einen Server, auf dem du dein Konto erstellen möchtest, und los geht's!",
     "signInGreeting": "Du hast bereits ein Konto bei Matrix? Willkommen zurück! Wähle deinen Homeserver aus und melde dich an.",
-    "appIntro": "Mit FluffyChat kannst du mit deinen Freunden chatten. Es ist ein sicherer, dezentralisierter [Matrix]-Messenger! Erfahre mehr auf https://matrix.org, wenn du möchtest, oder melde dich einfach an.",
+    "appIntro": "Mit FluffyChat kannst du mit deinen Freunden chatten. Es ist ein sicherer, dezentralisierter [Matrix]-Messenger! Erfahre mehr auf https://matrix.org wenn du möchtest, oder melde dich einfach an.",
     "theProcessWasCanceled": "Der Vorgang wurde abgebrochen.",
     "federationBaseUrl": "Basis-URL der Föderation",
     "clientWellKnownInformation": "Bekannte Informationen zum Client:",
     "join": "Beitreten",
     "searchOrEnterHomeserverAddress": "Homeserver-Adresse suchen oder eingeben",
-    "matrixId": "Matrix ID"
+    "matrixId": "Matrix ID",
+    "reset": "Zurücksetzen",
+    "setPowerLevel": "Power-Level einstellen",
+    "makeModerator": "Zum Moderator machen",
+    "makeAdmin": "Zum Admin machen",
+    "removeModeratorRights": "Moderatorenrechte entziehen",
+    "removeAdminRights": "Adminrechte entziehen",
+    "powerLevel": "Power-Level",
+    "setPowerLevelDescription": "Die Power-Level legen fest, was ein Mitglied in diesem Raum tun darf und liegen üblicherweise zwischen 0 und 100.",
+    "owner": "Besitzer",
+    "mute": "Stumm",
+    "@mute": {
+        "description": "This should be a very short string because there is not much space in the button!"
+    },
+    "createNewChat": "Neuen Chat erstellen",
+    "supportFluffyChat": "FluffyChat unterstützen",
+    "support": "Unterstützen",
+    "fluffyChatSupportBannerMessage": "FluffyChat braucht DEINE Hilfe!\n❤️❤️❤️\nFluffyChat wird immer kostenlos bleiben, aber Entwicklung und Hosting kosten Geld.\nDie Zukunft des Projekts hängt von deiner Unterstützung ab.",
+    "skipSupportingFluffyChat": "FluffyChat unterstützen überspringen",
+    "iDoNotWantToSupport": "Ich möchte nicht unterstützen",
+    "iAlreadySupportFluffyChat": "I unterstütze FluffyChat bereits"
 }

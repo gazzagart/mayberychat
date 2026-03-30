@@ -2681,7 +2681,6 @@
             }
         }
     },
-    "donate": "Donate",
     "startedAPoll": "{username} started a poll.",
     "@startedAPoll": {
         "type": "String",
@@ -2782,5 +2781,22 @@
         "description": "This should be a very short string because there is not much space in the button!"
     },
     "createNewChat": "Create new chat",
-    "reset": "Reset"
+    "reset": "Reset",
+    "supportFluffyChat": "Support FluffyChat",
+    "support": "Support",
+    "fluffyChatSupportBannerMessage": "FluffyChat needs YOUR help!\n❤️❤️❤️\nFluffyChat will always be free, but development and hosting still cost money.\nThe future of the project depends on support from people like you.",
+    "skipSupportingFluffyChat": "Skip supporting FluffyChat",
+    "iDoNotWantToSupport": "I do not want to support",
+    "iAlreadySupportFluffyChat": "I already support FluffyChat",
+    "setLowPriority": "Set low priority",
+    "unsetLowPriority": "Unset low priority",
+    "removeCallFromChat": "Remove call from chat",
+    "removeCallFromChatDescription": "Do you want to remove the call from the chat for all members?",
+    "removeCallForEveryone": "Remove call for everyone",
+    "startVoiceCall": "Start voice call",
+    "startVideoCall": "Start video call",
+    "joinVoiceCall": "Join voice call",
+    "joinVideoCall": "Join video call",
+    "live": "Live",
+    "playSoundOnNotification": "Play sound on notification"
 }

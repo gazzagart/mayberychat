@@ -1,7 +1,6 @@
+import 'package:fluffychat/config/app_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import 'package:fluffychat/config/app_config.dart';
 
 class AdaptiveDialogAction extends StatelessWidget {
   final VoidCallback? onPressed;
@@ -85,7 +84,7 @@ class AdaptiveDialogAction extends StatelessWidget {
 
 class AdaptiveDialogInkWell extends StatelessWidget {
   final Widget child;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final EdgeInsets padding;
 
   const AdaptiveDialogInkWell({
@@ -108,7 +107,9 @@ class AdaptiveDialogInkWell extends StatelessWidget {
       );
     }
     return Material(
-      color: theme.colorScheme.surfaceBright,
+      color: onTap == null
+          ? theme.colorScheme.surfaceContainer
+          : theme.colorScheme.surfaceBright,
       borderRadius: BorderRadius.circular(AppConfig.borderRadius / 2),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppConfig.borderRadius / 2),
@@ -125,7 +126,7 @@ class AdaptiveDialogInkWell extends StatelessWidget {
 class AdaptiveIconTextButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const AdaptiveIconTextButton({
     super.key,
     required this.label,

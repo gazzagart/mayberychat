@@ -1,16 +1,13 @@
 import 'dart:convert';
 
-import 'package:flutter/widgets.dart';
-
 import 'package:collection/collection.dart';
-import 'package:matrix/matrix_api_lite/utils/logs.dart';
-
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
-import 'package:fluffychat/pages/sign_in/utils/sort_homeservers.dart';
 import 'package:fluffychat/pages/sign_in/view_model/model/public_homeserver_data.dart';
 import 'package:fluffychat/pages/sign_in/view_model/sign_in_state.dart';
 import 'package:fluffychat/widgets/matrix.dart';
+import 'package:flutter/widgets.dart';
+import 'package:matrix/matrix_api_lite/utils/logs.dart';
 
 class SignInViewModel extends ValueNotifier<SignInState> {
   final MatrixState matrixService;
@@ -40,7 +37,7 @@ class SignInViewModel extends ValueNotifier<SignInState> {
             .toList() ??
         [];
     if (filterText.length >= 3 &&
-        filterText.contains('.') &&
+        (filterText.contains('.') || filterText == 'localhost') &&
         Uri.tryParse(filterText) != null &&
         !filteredPublicHomeservers.any(
           (homeserver) => homeserver.name == filterText,
@@ -73,8 +70,6 @@ class SignInViewModel extends ValueNotifier<SignInState> {
           return server.regMethod == null;
         });
       }
-
-      publicHomeservers.sort(sortHomeservers);
 
       final defaultServer = publicHomeservers.singleWhereOrNull(
         (server) => server.name == AppSettings.defaultHomeserver.value,

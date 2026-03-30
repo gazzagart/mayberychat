@@ -2690,7 +2690,6 @@
             }
         }
     },
-    "donate": "捐赠",
     "startedAPoll": "{username} 启动了投票。",
     "@startedAPoll": {
         "type": "String",
@@ -2792,5 +2791,23 @@
     "@mute": {
         "description": "This should be a very short string because there is not much space in the button!"
     },
-    "createNewChat": "新建聊天"
+    "createNewChat": "新建聊天",
+    "reset": "重置",
+    "supportFluffyChat": "支持 FluffyChat",
+    "support": "支持",
+    "fluffyChatSupportBannerMessage": "FluffyChat 需要您的帮助！\n❤️❤️❤️\nFluffyChat 将始终免费，但开发和托管仍然要花钱。\n项目的未来仰赖像您这样的人的支持。",
+    "skipSupportingFluffyChat": "跳过支持 FluffyChar",
+    "iDoNotWantToSupport": "我不想支持",
+    "iAlreadySupportFluffyChat": "我已支持 FluffyChat",
+    "setLowPriority": "设置低优先级",
+    "unsetLowPriority": "取消设置低优先级",
+    "removeCallFromChat": "从聊天中删除通话",
+    "removeCallFromChatDescription": "要为所有成员从聊天中删除通话吗？",
+    "removeCallForEveryone": "为所有人删除通话",
+    "startVoiceCall": "开始语音通话",
+    "startVideoCall": "开始视频通话",
+    "joinVoiceCall": "加入语音通话",
+    "joinVideoCall": "加入视频通话",
+    "live": "实时",
+    "playSoundOnNotification": "播放通知声音"
 }

@@ -1,20 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:collection/collection.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:matrix/matrix.dart';
-import 'package:scroll_to_index/scroll_to_index.dart';
-
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
@@ -37,6 +28,15 @@ import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart'
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:fluffychat/widgets/share_scaffold_dialog.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:matrix/matrix.dart';
+import 'package:mime/mime.dart';
+import 'package:scroll_to_index/scroll_to_index.dart';
+
 import '../../utils/account_bundles.dart';
 import '../../utils/localized_exception_extension.dart';
 import 'send_file_dialog.dart';
@@ -211,6 +211,7 @@ class ChatController extends State<ChatPageWithRoom>
       context: context,
       future: room.leave,
     );
+    if (!mounted) return;
     if (success.error != null) return;
     context.go('/rooms');
   }
@@ -462,24 +463,22 @@ class ChatController extends State<ChatPageWithRoom>
     scrollUpBannerEventId = eventId;
   });
 
+  bool firstUpdateReceived = false;
+
   void updateView() {
     if (!mounted) return;
     setReadMarker();
-    setState(() {});
+    setState(() {
+      firstUpdateReceived = true;
+    });
   }
 
   Future<void>? loadTimelineFuture;
 
-  int? animateInEventIndex;
-
-  void onInsert(int i) {
-    // setState will be called by updateView() anyway
-    if (timeline?.allowNewEvent == true) animateInEventIndex = i;
-  }
-
   Future<void> _getTimeline({String? eventContextId}) async {
-    await Matrix.of(context).client.roomsLoading;
-    await Matrix.of(context).client.accountDataLoading;
+    final matrix = Matrix.of(context);
+    await matrix.client.roomsLoading;
+    await matrix.client.accountDataLoading;
     if (eventContextId != null &&
         (!eventContextId.isValidMatrixId || eventContextId.sigil != '\$')) {
       eventContextId = null;
@@ -489,15 +488,11 @@ class ChatController extends State<ChatPageWithRoom>
       timeline = await room.getTimeline(
         onUpdate: updateView,
         eventContextId: eventContextId,
-        onInsert: onInsert,
       );
     } catch (e, s) {
       Logs().w('Unable to load timeline on event ID $eventContextId', e, s);
       if (!mounted) return;
-      timeline = await room.getTimeline(
-        onUpdate: updateView,
-        onInsert: onInsert,
-      );
+      timeline = await room.getTimeline(onUpdate: updateView);
       if (!mounted) return;
       if (e is TimeoutException || e is IOException) {
         _showScrollUpMaterialBanner(eventContextId!);
@@ -560,6 +555,7 @@ class ChatController extends State<ChatPageWithRoom>
     timeline?.cancelSubscriptions();
     timeline = null;
     inputFocus.removeListener(_inputFocusListener);
+    if (currentlyTyping) room.setTyping(false);
     super.dispose();
   }
 
@@ -638,6 +634,7 @@ class ChatController extends State<ChatPageWithRoom>
   Future<void> sendFileAction({FileType type = FileType.any}) async {
     final files = await selectFiles(context, allowMultiple: true, type: type);
     if (files.isEmpty) return;
+    if (!mounted) return;
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
@@ -669,6 +666,7 @@ class ChatController extends State<ChatPageWithRoom>
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickImage(source: ImageSource.camera);
     if (file == null) return;
+    if (!mounted) return;
 
     await showAdaptiveDialog(
       context: context,
@@ -690,6 +688,7 @@ class ChatController extends State<ChatPageWithRoom>
       maxDuration: const Duration(minutes: 1),
     );
     if (file == null) return;
+    if (!mounted) return;
 
     await showAdaptiveDialog(
       context: context,
@@ -707,7 +706,7 @@ class ChatController extends State<ChatPageWithRoom>
     String path,
     int duration,
     List<int> waveform,
-    String? fileName,
+    String fileName,
   ) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final audioFile = XFile(path);
@@ -719,31 +718,40 @@ class ChatController extends State<ChatPageWithRoom>
     final bytes = bytesResult.result;
     if (bytes == null) return;
 
+    final mimeType = lookupMimeType(fileName, headerBytes: bytes);
+    final extension = mimeType == null ? null : extensionFromMime(mimeType);
+    if (extension != null) {
+      fileName =
+          'voice_message_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    }
+
     final file = MatrixAudioFile(
       bytes: bytes,
-      name: fileName ?? audioFile.path,
+      name: fileName,
+      mimeType: mimeType,
     );
 
-    room
-        .sendFileEvent(
-          file,
-          inReplyTo: replyEvent,
-          threadRootEventId: activeThreadId,
-          extraContent: {
-            'info': {...file.info, 'duration': duration},
-            'org.matrix.msc3245.voice': {},
-            'org.matrix.msc1767.audio': {
-              'duration': duration,
-              'waveform': waveform,
-            },
+    try {
+      await room.sendFileEvent(
+        file,
+        inReplyTo: replyEvent,
+        threadRootEventId: activeThreadId,
+        extraContent: {
+          'info': {...file.info, 'duration': duration},
+          'org.matrix.msc3245.voice': {},
+          'org.matrix.msc1767.audio': {
+            'duration': duration,
+            'waveform': waveform,
           },
-        )
-        .catchError((e) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text((e as Object).toLocalizedString(context))),
-          );
-          return null;
-        });
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text(e.toLocalizedString(context))),
+      );
+      return;
+    }
     setState(() {
       replyEvent = null;
     });
@@ -805,29 +813,30 @@ class ChatController extends State<ChatPageWithRoom>
 
   Future<void> reportEventAction() async {
     final event = selectedEvents.single;
+    final l10n = L10n.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final score = await showModalActionPopup<int>(
       context: context,
-      title: L10n.of(context).reportMessage,
-      message: L10n.of(context).howOffensiveIsThisContent,
-      cancelLabel: L10n.of(context).cancel,
+      title: l10n.reportMessage,
+      message: l10n.howOffensiveIsThisContent,
+      cancelLabel: l10n.cancel,
       actions: [
-        AdaptiveModalAction(
-          value: -100,
-          label: L10n.of(context).extremeOffensive,
-        ),
-        AdaptiveModalAction(value: -50, label: L10n.of(context).offensive),
-        AdaptiveModalAction(value: 0, label: L10n.of(context).inoffensive),
+        AdaptiveModalAction(value: -100, label: l10n.extremeOffensive),
+        AdaptiveModalAction(value: -50, label: l10n.offensive),
+        AdaptiveModalAction(value: 0, label: l10n.inoffensive),
       ],
     );
     if (score == null) return;
+    if (!mounted) return;
     final reason = await showTextInputDialog(
       context: context,
-      title: L10n.of(context).whyDoYouWantToReportThis,
-      okLabel: L10n.of(context).ok,
-      cancelLabel: L10n.of(context).cancel,
-      hintText: L10n.of(context).reason,
+      title: l10n.whyDoYouWantToReportThis,
+      okLabel: l10n.ok,
+      cancelLabel: l10n.cancel,
+      hintText: l10n.reason,
     );
     if (reason == null || reason.isEmpty) return;
+    if (!mounted) return;
     final result = await showFutureLoadingDialog(
       context: context,
       future: () => Matrix.of(context).client.reportEvent(
@@ -838,12 +847,13 @@ class ChatController extends State<ChatPageWithRoom>
       ),
     );
     if (result.error != null) return;
+    if (!mounted) return;
     setState(() {
       showEmojiPicker = false;
       selectedEvents.clear();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(L10n.of(context).contentHasBeenReported)),
+    scaffoldMessenger.showSnackBar(
+      SnackBar(content: Text(l10n.contentHasBeenReported)),
     );
   }
 
@@ -859,6 +869,7 @@ class ChatController extends State<ChatPageWithRoom>
       }
       setState(selectedEvents.clear);
     } catch (e, s) {
+      if (!mounted) return;
       ErrorReporter(
         context,
         'Error while delete error events action',
@@ -883,6 +894,7 @@ class ChatController extends State<ChatPageWithRoom>
         : null;
     if (reasonInput == null) return;
     final reason = reasonInput.isEmpty ? null : reasonInput;
+    if (!mounted) return;
     await showFutureLoadingDialog(
       context: context,
       futureWithProgress: (onProgress) async {
@@ -1237,6 +1249,7 @@ class ChatController extends State<ChatPageWithRoom>
       okLabel: L10n.of(context).unpin,
       cancelLabel: L10n.of(context).cancel,
     );
+    if (!mounted) return;
     if (response == OkCancelResult.ok) {
       final events = room.pinnedEventIds
         ..removeWhere((oldEvent) => oldEvent == eventId);
@@ -1296,6 +1309,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (AppSettings.sendTypingNotifications.value) {
       typingCoolDown?.cancel();
       typingCoolDown = Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
         typingCoolDown = null;
         currentlyTyping = false;
         room.setTyping(false);
@@ -1325,17 +1339,18 @@ class ChatController extends State<ChatPageWithRoom>
   Future<void> onPhoneButtonTap() async {
     // VoIP required Android SDK 21
     if (PlatformInfos.isAndroid) {
-      DeviceInfoPlugin().androidInfo.then((value) {
-        if (value.version.sdkInt < 21) {
-          Navigator.pop(context);
-          showOkAlertDialog(
-            context: context,
-            title: L10n.of(context).unsupportedAndroidVersion,
-            message: L10n.of(context).unsupportedAndroidVersionLong,
-            okLabel: L10n.of(context).close,
-          );
-        }
-      });
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      if (!mounted) return;
+      if (androidInfo.version.sdkInt < 21) {
+        Navigator.pop(context);
+        await showOkAlertDialog(
+          context: context,
+          title: L10n.of(context).unsupportedAndroidVersion,
+          message: L10n.of(context).unsupportedAndroidVersionLong,
+          okLabel: L10n.of(context).close,
+        );
+        return;
+      }
     }
     final callType = await showModalActionPopup<CallType>(
       context: context,
@@ -1356,11 +1371,13 @@ class ChatController extends State<ChatPageWithRoom>
       ],
     );
     if (callType == null) return;
+    if (!mounted) return;
 
     final voipPlugin = Matrix.of(context).voipPlugin;
     try {
       await voipPlugin!.voip.inviteToCall(room, callType);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toLocalizedString(context))));

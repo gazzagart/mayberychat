@@ -1953,7 +1953,7 @@
     "unsupportedAndroidVersion": "Niet-ondersteunde Android-versie",
     "unsupportedAndroidVersionLong": "Voor deze functie is een nieuwe Android-versie verplicht. Controleer je updates of Lineage OS-ondersteuning.",
     "videoCallsBetaWarning": "Houd er rekening mee dat videogesprekken momenteel in bèta zijn. Ze werken misschien niet zoals je verwacht of werken niet op alle platformen.",
-    "voiceCall": "Spraakoproep",
+    "voiceCall": "Spraakgesprek",
     "confirmEventUnpin": "Weet je zeker dat je de gebeurtenis definitief wilt losmaken?",
     "experimentalVideoCalls": "Videogesprekken (experimenteel)",
     "youAcceptedTheInvitation": "👍 Je hebt de uitnodiging geaccepteerd",
@@ -2383,7 +2383,7 @@
     "newPassword": "Nieuw wachtwoord",
     "pleaseChooseAStrongPassword": "Kies a.j.b. een sterk wachtwoord",
     "select": "Selecteer",
-    "leaveEmptyToClearStatus": "Laat leeg om je status te resetten.",
+    "leaveEmptyToClearStatus": "Laat leeg om jouw status te herstellen.",
     "addChatOrSubSpace": "Voeg chat of subspace toe",
     "pleaseEnterYourCurrentPassword": "Vul je huidige wachtwoord in",
     "passwordsDoNotMatch": "Wachtwoorden komen niet overeen",
@@ -2661,7 +2661,6 @@
     "longPressToRecordVoiceMessage": "Lang drukken om een spraakbericht op te nemen.",
     "pause": "Pauzeer",
     "resume": "Hervat",
-    "donate": "Doneer",
     "removeFromSpaceDescription": "De chat zal worden verwijderd uit de space, maar blijft in je chats.",
     "countChats": "{chats} chats",
     "@countChats": {
@@ -2791,5 +2790,22 @@
     "@mute": {
         "description": "This should be a very short string because there is not much space in the button!"
     },
-    "createNewChat": "Creëer nieuw chat"
+    "createNewChat": "Creëer nieuw chat",
+    "reset": "Herstellen",
+    "fluffyChatSupportBannerMessage": "Fluffy Chat heeft JOUW hulp nodig. _\n❤️❤️❤️\nFluffyChat zal altijd gratis zijn, maar ontwikkeling en hosting kost geld.\nDe toekomst van het project hangt af van steun van mensen zoals jij.",
+    "skipSupportingFluffyChat": "FluffyChat steunen overslaan",
+    "iDoNotWantToSupport": "Ik wil niet ondersteunen",
+    "iAlreadySupportFluffyChat": "Ik steun FluffyChat al",
+    "supportFluffyChat": "FluffyChat steunen",
+    "support": "Steunen",
+    "setLowPriority": "Lage prioriteit instellen",
+    "unsetLowPriority": "Lage prioriteit uitschakelen",
+    "removeCallFromChat": "Verwijder oproep van chat",
+    "removeCallFromChatDescription": "Wil je de oproep voor iedereen in de chat verwijderen?",
+    "removeCallForEveryone": "Verwijder oproep voor iedereen",
+    "live": "Live",
+    "startVoiceCall": "Start audio-gesprek",
+    "startVideoCall": "Start video-gesprek",
+    "joinVoiceCall": "Audio-gesprek opnemen",
+    "joinVideoCall": "Deelnemen aan video-gesprek"
 }

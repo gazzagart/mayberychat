@@ -1,21 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:collection/collection.dart';
 import 'package:desktop_notifications/desktop_notifications.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:matrix/encryption.dart';
-import 'package:matrix/matrix.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:universal_html/html.dart' as html;
-import 'package:url_launcher/url_launcher_string.dart';
-
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/client_manager.dart';
 import 'package:fluffychat/utils/init_with_restore.dart';
@@ -26,6 +13,18 @@ import 'package:fluffychat/utils/voip_plugin.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/fluffy_chat_app.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:matrix/encryption.dart';
+import 'package:matrix/matrix.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:url_launcher/url_launcher_string.dart';
+
 import '../config/setting_keys.dart';
 import '../pages/key_verification/key_verification_dialog.dart';
 import '../utils/account_bundles.dart';
@@ -266,12 +265,19 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           InitWithRestoreExtension.deleteSessionBackup(name);
 
           if (loggedInWithMultipleClients) {
+            final snackbarContext =
+                FluffyChatApp
+                    .router
+                    .routerDelegate
+                    .navigatorKey
+                    .currentContext ??
+                context;
+
+            if (!snackbarContext.mounted) return;
+            final l10n = L10n.of(snackbarContext);
             ScaffoldMessenger.of(
-              FluffyChatApp.router.routerDelegate.navigatorKey.currentContext ??
-                  context,
-            ).showSnackBar(
-              SnackBar(content: Text(L10n.of(context).oneClientLoggedOut)),
-            );
+              snackbarContext,
+            ).showSnackBar(SnackBar(content: Text(l10n.oneClientLoggedOut)));
             return;
           }
           FluffyChatApp.router.go('/');
@@ -339,7 +345,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   }
 
   Future<void> createVoipPlugin() async {
-    if (AppSettings.experimentalVoip.value) {
+    if (!AppSettings.experimentalVoip.value) {
       voipPlugin = null;
       return;
     }
@@ -371,7 +377,6 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     onKeyVerificationRequestSub.values.map((s) => s.cancel());
     onLogoutSub.values.map((s) => s.cancel());
     onNotification.values.map((s) => s.cancel());
-    client.httpClient.close();
 
     linuxNotifications?.close();
 
@@ -384,15 +389,17 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   }
 
   Future<void> dehydrateAction(BuildContext context) async {
+    final l10n = L10n.of(context);
     final response = await showOkCancelAlertDialog(
       context: context,
       isDestructive: true,
-      title: L10n.of(context).dehydrate,
-      message: L10n.of(context).dehydrateWarning,
+      title: l10n.dehydrate,
+      message: l10n.dehydrateWarning,
     );
     if (response != OkCancelResult.ok) {
       return;
     }
+    if (!context.mounted) return;
     final result = await showFutureLoadingDialog(
       context: context,
       future: client.exportDump,
@@ -406,6 +413,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         'fluffychat-export-${DateFormat(DateFormat.YEAR_MONTH_DAY).format(DateTime.now())}.fluffybackup';
 
     final file = MatrixFile(bytes: exportBytes, name: exportFileName);
+    if (!context.mounted) return;
     file.save(context);
   }
 }

@@ -1,13 +1,11 @@
-import 'package:flutter/material.dart';
-
 import 'package:file_picker/file_picker.dart';
-
-import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/utils/account_config.dart';
 import 'package:fluffychat/utils/file_selector.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:fluffychat/widgets/theme_builder.dart';
+import 'package:flutter/material.dart';
+
 import '../../widgets/matrix.dart';
 import 'settings_style_view.dart';
 
@@ -31,6 +29,7 @@ class SettingsStyleController extends State<SettingsStyle> {
     final picked = await selectFiles(context, type: FileType.image);
     final pickedFile = picked.firstOrNull;
     if (pickedFile == null) return;
+    if (!mounted) return;
 
     await showFutureLoadingDialog(
       context: context,
@@ -110,32 +109,6 @@ class SettingsStyleController extends State<SettingsStyle> {
 
   ThemeMode get currentTheme => ThemeController.of(context).themeMode;
   Color? get currentColor => ThemeController.of(context).primaryColor;
-
-  static final List<Color?> customColors = [
-    null,
-    AppConfig.chatColor,
-    Colors.indigo,
-    Colors.blue,
-    Colors.blueAccent,
-    Colors.teal,
-    Colors.tealAccent,
-    Colors.green,
-    Colors.greenAccent,
-    Colors.yellow,
-    Colors.yellowAccent,
-    Colors.orange,
-    Colors.orangeAccent,
-    Colors.red,
-    Colors.redAccent,
-    Colors.pink,
-    Colors.pinkAccent,
-    Colors.purple,
-    Colors.purpleAccent,
-    Colors.blueGrey,
-    Colors.grey,
-    Colors.white,
-    Colors.black,
-  ];
 
   void switchTheme(ThemeMode? newTheme) {
     if (newTheme == null) return;

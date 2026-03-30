@@ -1,10 +1,3 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
-import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart';
-import 'package:url_launcher/url_launcher_string.dart';
-
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/sign_in/view_model/model/public_homeserver_data.dart';
@@ -14,6 +7,11 @@ import 'package:fluffychat/utils/sign_in_flows/oidc_login.dart';
 import 'package:fluffychat/utils/sign_in_flows/sso_login.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/matrix.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:matrix/matrix.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 Future<void> connectToHomeserverFlow(
   PublicHomeserverData homeserverData,
@@ -40,6 +38,7 @@ Future<void> connectToHomeserverFlow(
 
     if ((kIsWeb || PlatformInfos.isLinux) &&
         (supportsSso || authMetadata != null || (signUp && regLink != null))) {
+      if (!context.mounted) return;
       final consent = await showOkCancelAlertDialog(
         context: context,
         title: l10n.appWantsToUseForLogin(homeserverInput),
@@ -47,16 +46,19 @@ Future<void> connectToHomeserverFlow(
         okLabel: l10n.continueText,
       );
       if (consent != OkCancelResult.ok) return;
+      if (!context.mounted) return;
     }
+    if (!context.mounted) return;
 
     if (authMetadata != null && AppSettings.enableMatrixNativeOIDC.value) {
       await oidcLoginFlow(client, context, signUp);
     } else if (supportsSso) {
-      await ssoLoginFlow(client, context, signUp);
+      await ssoLoginFlow(client, context, signUp, loginFlows);
     } else {
       if (signUp && regLink != null) {
         await launchUrlString(regLink);
       }
+      if (!context.mounted) return;
       final pathSegments = List.of(
         GoRouter.of(context).routeInformationProvider.value.uri.pathSegments,
       );

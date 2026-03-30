@@ -1,15 +1,13 @@
-import 'package:flutter/material.dart';
-
-import 'package:flutter_linkify/flutter_linkify.dart';
-import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher_string.dart';
-
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/intro/flows/restore_backup_flow.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/widgets/layouts/login_scaffold.dart';
 import 'package:fluffychat/widgets/matrix.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class IntroPage extends StatelessWidget {
   final bool isLoading, hasPresetHomeserver;
@@ -68,7 +66,7 @@ class IntroPage extends StatelessWidget {
                 ),
               ),
               PopupMenuItem(
-                value: () => PlatformInfos.showDialog(context),
+                onTap: () => PlatformInfos.showDialog(context),
                 child: Row(
                   mainAxisSize: .min,
                   children: [
@@ -168,6 +166,7 @@ class IntroPage extends StatelessWidget {
                                       final client = await Matrix.of(
                                         context,
                                       ).getLoginClient();
+                                      if (!context.mounted) return;
                                       context.go(
                                         '${GoRouterState.of(context).uri.path}/login',
                                         extra: client,

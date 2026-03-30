@@ -2540,7 +2540,6 @@
             }
         }
     },
-    "donate": "Doner",
     "banUserDescription": "Brukeren vil bli utestengt fra chatten og vil ikke kunne delta i chatten igjen før utestengelsen er opphevet.",
     "unbanUserDescription": "Brukeren vil kunne gå inn i chatten igjen hvis vedkommende prøver.",
     "kickUserDescription": "Brukeren blir kastet ut av chatten, men ikke utestengt. I offentlige chatter kan brukeren bli med på nytt når som helst.",
@@ -2799,5 +2798,23 @@
     "@mute": {
         "description": "This should be a very short string because there is not much space in the button!"
     },
-    "createNewChat": "Opprett ny chat"
+    "createNewChat": "Opprett ny chat",
+    "reset": "Nullstill",
+    "supportFluffyChat": "Støtt FluffyChat",
+    "support": "Støtte",
+    "fluffyChatSupportBannerMessage": "FluffyChat trenger DIN hjelp!\n❤️❤️❤️\nFluffyChat vil alltid være gratis, men utvikling og drift koster fortsatt penger. \nProsjektets fremtid avhenger av støtte fra folk som deg.",
+    "skipSupportingFluffyChat": "Hopp over støtte til FluffyChat",
+    "iDoNotWantToSupport": "Jeg ønsker ikke å støtte",
+    "iAlreadySupportFluffyChat": "Jeg støtter allerede FluffyChat",
+    "setLowPriority": "Sett lav prioritet",
+    "unsetLowPriority": "Fjern lav prioritet",
+    "removeCallFromChat": "Fjern anrop fra chat",
+    "removeCallFromChatDescription": "Vil du fjerne anropet fra chatten for alle medlemmer?",
+    "removeCallForEveryone": "Fjern anrop fra alle",
+    "startVoiceCall": "Start lydsamtale",
+    "startVideoCall": "Start videosamtale",
+    "joinVoiceCall": "Bli med i lydsamtale",
+    "joinVideoCall": "Bli med i videosamtale",
+    "live": "Direkte",
+    "playSoundOnNotification": "Spill av lyd ved varsling"
 }
