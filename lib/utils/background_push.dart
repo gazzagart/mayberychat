@@ -43,8 +43,6 @@ import '../config/setting_keys.dart';
 import '../widgets/matrix.dart';
 import 'platform_infos.dart';
 
-//<GOOGLE_SERVICES>import 'package:fcm_shared_isolate/fcm_shared_isolate.dart';
-
 class BackgroundPush {
   static BackgroundPush? _instance;
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
@@ -66,7 +64,7 @@ class BackgroundPush {
   final pendingTests = <String, Completer<void>>{};
   bool firebaseEnabled = false;
 
-  final firebase = FcmSharedIsolate();
+  //<GOOGLE_SERVICES>final firebase = FcmSharedIsolate();
 
   DateTime? lastReceivedPush;
 
@@ -189,7 +187,7 @@ class BackgroundPush {
     bool useDeviceSpecificAppId = false,
   }) async {
     if (PlatformInfos.isIOS) {
-      await firebase.requestPermission();
+      //<GOOGLE_SERVICES>await firebase.requestPermission();
     }
     if (PlatformInfos.isAndroid) {
       _flutterLocalNotificationsPlugin
@@ -357,7 +355,7 @@ class BackgroundPush {
         //<GOOGLE_SERVICES>await firebase.requestPermission();
       }
       try {
-        _fcmToken = await firebase.getToken();
+        //<GOOGLE_SERVICES>_fcmToken = await firebase.getToken();
         if (_fcmToken == null) throw ('PushToken is null');
       } catch (e, s) {
         Logs().w('[Push] cannot get token', e, e is String ? null : s);
@@ -412,8 +410,8 @@ class BackgroundPush {
     Logs().i('[Push] UnifiedPush using endpoint $endpoint');
     final oldTokens = <String?>{};
     try {
-      final fcmToken = await firebase.getToken();
-      oldTokens.add(fcmToken);
+      //<GOOGLE_SERVICES>final fcmToken = await firebase.getToken();
+      //<GOOGLE_SERVICES>oldTokens.add(fcmToken);
     } catch (_) {}
     await setupPusher(
       gatewayUrl: endpoint,

@@ -127,6 +127,22 @@ cd mayberychat
 
 ## 3. Build for Your Platform
 
+### Enabling Firebase Cloud Messaging (optional)
+
+Firebase push notification code is disabled by default in the source (commented out with `//<GOOGLE_SERVICES>` prefixes). This allows the app to build without any Google dependencies.
+
+To enable Firebase push notifications before building, run:
+
+```bash
+./scripts/add-firebase-messaging.sh
+```
+
+This installs the `fcm_shared_isolate` package and uncomments all `//<GOOGLE_SERVICES>` lines. **Do not commit this change** — it is a build-time step only. If you need to undo it:
+
+```bash
+git checkout lib/utils/background_push.dart
+```
+
 ---
 
 ### Android
@@ -279,7 +295,7 @@ cd build/web && python3 -m http.server 8080
 
 #### Docker (Web)
 
-A `Dockerfile` is included. Build and run with:
+A `Dockerfile` is included. Build and run locally with:
 
 ```bash
 docker build -t letsyak-web:latest .
@@ -287,6 +303,39 @@ docker run -p 8080:80 letsyak-web:latest
 ```
 
 Then open http://localhost:8080 in your browser.
+
+#### Deploying to a Server
+
+Build the image and export it as a compressed archive:
+
+```bash
+docker build -t letsyak-web:latest .
+docker save letsyak-web:latest | gzip > letsyak-web.tar.gz
+```
+
+Copy `letsyak-web.tar.gz` to your server, then load it:
+
+**Linux / macOS server:**
+```bash
+docker load < letsyak-web.tar.gz
+```
+
+**Windows server:**
+```powershell
+docker load -i letsyak-web.tar.gz
+```
+
+Start the container with Docker Compose:
+
+```bash
+docker compose up -d letsyak-web
+```
+
+If you need to pick up a newly loaded image (e.g. after updating), use `--force-recreate` to replace the running container even if the Compose file hasn't changed:
+
+```bash
+docker compose up -d --force-recreate letsyak-web
+```
 
 #### Configuration (Web)
 
