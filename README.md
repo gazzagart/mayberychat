@@ -313,6 +313,16 @@ docker build -t letsyak-web:latest .
 docker save letsyak-web:latest | gzip > letsyak-web.tar.gz
 ```
 
+> **Apple Silicon note:** If you're building on an Apple Silicon Mac (M1/M2/M3/M4/M5) and deploying to an x86_64 server, build for the correct platform:
+> ```bash
+> docker buildx build --platform linux/amd64 -t letsyak-web:latest --load .
+> docker save letsyak-web:latest | gzip > letsyak-web.tar.gz
+> ```
+> If `buildx` reports no builder, create one first:
+> ```bash
+> docker buildx create --use
+> ```
+
 Copy `letsyak-web.tar.gz` to your server, then load it:
 
 **Linux / macOS server:**
