@@ -35,6 +35,43 @@
   <link rel="stylesheet" type="text/css" href="splash/style.css">
   <script src="Imaging.js"></script>
 
+  <!-- Firebase JS SDK — used for web push notifications.
+       Initialises the app and exposes two functions called from Dart (web_push_js.dart):
+         window._letsyak_requestNotificationPermission()
+         window._letsyak_getWebFcmToken(vapidKey)
+  -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
+  <script>
+    (function () {
+      const app = firebase.initializeApp({
+        apiKey: 'AIzaSyB6r5g7uLroBO7pLLbiI1o8tKPlozNQ_yQ',
+        authDomain: 'let-s-yak.firebaseapp.com',
+        projectId: 'let-s-yak',
+        storageBucket: 'let-s-yak.firebasestorage.app',
+        messagingSenderId: '18561045434',
+        appId: '1:18561045434:web:118c3da131ac889d1cc383',
+      });
+      const messaging = firebase.messaging(app);
+
+      window._letsyak_requestNotificationPermission = async function () {
+        console.log('[Push] Requesting notification permission...');
+        const result = await Notification.requestPermission();
+        console.log('[Push] Permission result:', result);
+        return result;
+      };
+      window._letsyak_getWebFcmToken = async function (vapidKey) {
+        console.log('[Push] Registering Firebase service worker...');
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('[Push] Service worker registered, scope:', registration.scope);
+        console.log('[Push] Requesting FCM token...');
+        const token = await messaging.getToken({ vapidKey: vapidKey, serviceWorkerRegistration: registration });
+        console.log('[Push] FCM token received:', token ? token.substring(0, 15) + '...' : 'null');
+        return token;
+      };
+    })();
+  </script>
+
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
 </head>

@@ -42,6 +42,9 @@ import '../config/app_config.dart';
 import '../config/setting_keys.dart';
 import '../widgets/matrix.dart';
 import 'platform_infos.dart';
+//<GOOGLE_SERVICES>import 'package:fcm_shared_isolate/fcm_shared_isolate.dart';
+
+import 'web_push_js_stub.dart' if (dart.library.js_interop) 'web_push_js.dart';
 
 class BackgroundPush {
   static BackgroundPush? _instance;
@@ -71,6 +74,11 @@ class BackgroundPush {
   bool upAction = false;
 
   Future<void> _init() async {
+    // Web push is handled separately via setupWebPush() using the Firebase JS
+    // SDK through dart:js_interop — see web_push_js.dart.
+    // The mobile-specific initialisation below uses fcm_shared_isolate and
+    // flutter_local_notifications, neither of which supports web.
+    if (kIsWeb) return;
     firebaseEnabled = true;
     try {
       mainIsolateReceivePort?.listen((message) async {
@@ -279,9 +287,9 @@ class BackgroundPush {
     }
   }
 
-  final pusherDataMessageFormat = Platform.isAndroid
+  final pusherDataMessageFormat = PlatformInfos.isAndroid
       ? 'android'
-      : Platform.isIOS
+      : PlatformInfos.isIOS
       ? 'ios'
       : null;
 
@@ -289,6 +297,13 @@ class BackgroundPush {
 
   Future<void> setupPush() async {
     Logs().d('SetupPush');
+    if (kIsWeb) {
+      if (client.onLoginStateChanged.value == LoginState.loggedIn &&
+          matrix != null) {
+        await setupWebPush();
+      }
+      return;
+    }
     if (client.onLoginStateChanged.value != LoginState.loggedIn ||
         !PlatformInfos.isMobile ||
         matrix == null) {
@@ -346,6 +361,46 @@ class BackgroundPush {
       }
       onFcmError?.call(l10n!.oopsPushError);
     });
+  }
+
+  /// Set up web push notifications using the Firebase JS SDK via [FirebaseMessaging].
+  ///
+  /// Prerequisites:
+  ///  1. A VAPID key from Firebase Console > Project Settings >
+  ///     Cloud Messaging > Web Push certificates.
+  ///  2. A push gateway (sygnal) configured with the *let-s-yak* Firebase
+  ///     service-account credentials and the app IDs below.
+  ///     The default gateway (push.fluffychat.im) uses FluffyChat's project
+  ///     and will NOT deliver notifications for this app — you need your own
+  ///     sygnal instance or update the gateway URL in Settings.
+  Future<void> setupWebPush() async {
+    if (!kIsWeb) return;
+    Logs().v('[Push] Setup web push');
+    try {
+      // TODO: Replace with your VAPID key.
+      // Found in Firebase Console > Project Settings >
+      // Cloud Messaging > Web Push certificates > Key pair.
+      const vapidKey =
+          'BIMMkPi0RT0kUbcB-PXqukYbvPlsvJF5rwnH6JFusOTvXreCNvRCPHEWRnIiW5OyoT3rFfunzV641NKRWS2rl9g';
+      final token = await requestWebFcmToken(vapidKey);
+      if (token == null) {
+        Logs().w('[Push] No web FCM token (permission denied or JS error)');
+        await _noFcmWarning();
+        return;
+      }
+      Logs().v('[Push] Got web FCM token (${token.substring(0, 10)}...)');
+      await setupPusher(
+        gatewayUrl: AppSettings.pushNotificationsGatewayUrl.value,
+        token: token,
+      );
+      // Foreground messages: the Matrix client refreshes the room list in real
+      // time so no extra OS notification is shown while the app is visible.
+      // Background messages are handled by web/firebase-messaging-sw.js.
+    } catch (e, s) {
+      Logs().w('[Push] Web push setup failed', e, s);
+      await loadLocale();
+      onFcmError?.call(l10n!.oopsPushError);
+    }
   }
 
   Future<void> setupFirebase() async {

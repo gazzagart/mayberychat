@@ -4,6 +4,7 @@ import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_list/navi_rail_item.dart';
 import 'package:fluffychat/pages/chat_list/start_chat_fab.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/utils/stream_extension.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/matrix.dart';
@@ -117,6 +118,23 @@ class SpacesNavigationRail extends StatelessWidget {
                       padding: const EdgeInsets.all(12.0),
                       child: StartChatFab(),
                     ),
+                  FutureBuilder<String>(
+                    future: PlatformInfos.getVersion(),
+                    builder: (context, snapshot) {
+                      final version = snapshot.data ?? '';
+                      if (version.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          'v$version',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             );

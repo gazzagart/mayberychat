@@ -117,6 +117,12 @@
           </intent-filter>
         </service>
 
+        <!-- Prevent the firebase_messaging plugin from registering its own
+             messaging service, which would conflict with FcmPushService above. -->
+        <service
+          android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService"
+          tools:node="remove" />
+
         <service android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
              android:foregroundServiceType="camera|microphone|mediaProjection">
         </service>
