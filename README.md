@@ -481,6 +481,70 @@ flutter run -d linux     # Linux desktop
 
 ---
 
+# Pulling Updates from FluffyChat (Upstream)
+
+LetsYak is a fork of [FluffyChat](https://github.com/krille-chan/fluffychat). To pull in the latest changes from the upstream repository:
+
+## 1. Add the Upstream Remote (one-time setup)
+
+```bash
+git remote add upstream https://github.com/krille-chan/fluffychat.git
+```
+
+Verify it was added:
+```bash
+git remote -v
+```
+
+You should see both `origin` (your fork) and `upstream` (FluffyChat).
+
+## 2. Fetch and Merge Upstream Changes
+
+```bash
+git fetch upstream
+git checkout main
+git merge upstream/main
+```
+
+## 3. Resolve Conflicts
+
+If there are merge conflicts, Git will mark the affected files. Open them, resolve the conflicts, then:
+
+```bash
+git add .
+git commit
+```
+
+Common areas where conflicts may occur:
+- `README.md` — branding and project-specific documentation
+- `pubspec.yaml` — dependency versions or app metadata
+- `config.json` / `config.sample.json` — default configuration values
+- Any files where LetsYak-specific customisations have been made
+
+## 4. Push the Merged Changes
+
+```bash
+git push origin main
+```
+
+## Using Rebase Instead of Merge (Alternative)
+
+If you prefer a linear history, you can rebase instead of merging:
+
+```bash
+git fetch upstream
+git checkout main
+git rebase upstream/main
+```
+
+> **Note:** If you have already pushed your commits, rebasing will rewrite history. You will need to force-push afterwards:
+> ```bash
+> git push origin main --force-with-lease
+> ```
+> Only do this if you are the sole contributor or have coordinated with other contributors.
+
+---
+
 # License
 
 This project is licensed under the AGPL-3.0 License. See [LICENSE](LICENSE) for details.
