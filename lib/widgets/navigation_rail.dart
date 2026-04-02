@@ -48,7 +48,7 @@ class SpacesNavigationRail extends StatelessWidget {
                   Expanded(
                     child: ListView.builder(
                       scrollDirection: Axis.vertical,
-                      itemCount: allSpaces.length + 2,
+                      itemCount: allSpaces.length + 3,
                       itemBuilder: (context, i) {
                         if (i == 0) {
                           return NaviRailItem(
@@ -66,7 +66,22 @@ class SpacesNavigationRail extends StatelessWidget {
                             unreadBadgeFilter: (room) => true,
                           );
                         }
-                        i--;
+                        if (i == 1) {
+                          return NaviRailItem(
+                            isSelected: false,
+                            onTap: () => context.go('/rooms/vault'),
+                            icon: const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Icon(Icons.cloud_outlined),
+                            ),
+                            selectedIcon: const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Icon(Icons.cloud),
+                            ),
+                            toolTip: 'Vault',
+                          );
+                        }
+                        i -= 2;
                         if (i == allSpaces.length) {
                           return NaviRailItem(
                             isSelected: false,

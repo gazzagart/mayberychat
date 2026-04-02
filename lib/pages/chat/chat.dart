@@ -13,6 +13,7 @@ import 'package:fluffychat/pages/chat/chat_view.dart';
 import 'package:fluffychat/pages/chat/event_info_dialog.dart';
 import 'package:fluffychat/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:fluffychat/pages/chat_details/chat_details.dart';
+import 'package:fluffychat/pages/vault/vault_page.dart';
 import 'package:fluffychat/utils/adaptive_bottom_sheet.dart';
 import 'package:fluffychat/utils/error_reporter.dart';
 import 'package:fluffychat/utils/file_selector.dart';
@@ -22,6 +23,8 @@ import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:fluffychat/utils/other_party_can_receive.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/utils/show_scaffold_dialog.dart';
+import 'package:fluffychat/utils/vault/vault_event_content.dart';
+import 'package:fluffychat/utils/vault/vault_models.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart';
@@ -784,6 +787,18 @@ class ChatController extends State<ChatPageWithRoom>
     );
   }
 
+  Future<void> sendVaultFileAction() async {
+    final share = await Navigator.of(context).push<VaultShare>(
+      MaterialPageRoute(
+        builder: (context) => VaultPage(pickerMode: true, roomId: room.id),
+      ),
+    );
+    if (share == null || !mounted) return;
+
+    final content = VaultEventContent.build(share: share);
+    await room.sendEvent(content, type: EventTypes.Message);
+  }
+
   String _getSelectedEventString() {
     var copyString = '';
     if (selectedEvents.length == 1) {
@@ -1238,6 +1253,9 @@ class ChatController extends State<ChatPageWithRoom>
       case AddPopupMenuActions.location:
         sendLocationAction();
         return;
+      case AddPopupMenuActions.vaultFile:
+        sendVaultFileAction();
+        return;
     }
   }
 
@@ -1445,4 +1463,5 @@ enum AddPopupMenuActions {
   photoCamera,
   videoCamera,
   location,
+  vaultFile,
 }
