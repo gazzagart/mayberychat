@@ -1,4 +1,7 @@
 {
   "applicationName": "LetsYak",
-  "defaultHomeserver": "https://chat.maybery.app"
+  "defaultHomeserver": "https://chat.maybery.app",
+  "letsyakCalling": false,
+  "letsyakLivekitUrl": "",
+  "letsyakJwtServiceUrl": ""
 }

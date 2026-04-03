@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:desktop_notifications/desktop_notifications.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/letsyak/calling/calling_module.dart';
 import 'package:fluffychat/utils/client_manager.dart';
 import 'package:fluffychat/utils/init_with_restore.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_file_extension.dart';
@@ -76,6 +77,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   }
 
   VoipPlugin? voipPlugin;
+  LetsYakCallingModule? letsyakCalling;
 
   bool get isMultiAccount => widget.clients.length > 1;
 
@@ -342,6 +344,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     }
 
     createVoipPlugin();
+    _initLetsYakCalling();
   }
 
   Future<void> createVoipPlugin() async {
@@ -350,6 +353,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       return;
     }
     voipPlugin = VoipPlugin(this);
+  }
+
+  void _initLetsYakCalling() {
+    letsyakCalling?.dispose();
+    letsyakCalling = LetsYakCallingModule.init(client: client);
   }
 
   @override
@@ -379,6 +387,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     onNotification.values.map((s) => s.cancel());
 
     linuxNotifications?.close();
+
+    letsyakCalling?.dispose();
 
     super.dispose();
   }

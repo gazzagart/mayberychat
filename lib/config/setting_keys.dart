@@ -58,6 +58,10 @@ enum AppSettings<T> {
   enableSoftLogout<bool>('chat.fluffy.enable_soft_logout', false),
   enableMatrixNativeOIDC<bool>('chat.fluffy.enable_matrix_native_oidc', false),
   presetHomeserver<String>('chat.fluffy.preset_homeserver', ''),
+  // LetsYak calling module settings
+  letsyakCalling<bool>('letsyak.calling.enabled', false),
+  letsyakLivekitUrl<String>('letsyak.calling.livekit_url', ''),
+  letsyakJwtServiceUrl<String>('letsyak.calling.jwt_service_url', ''),
   welcomeText<String>('chat.fluffy.welcome_text', ''),
   website<String>('chat.fluffy.website_url', 'https://fluffychat.im'),
   logoUrl<String>(

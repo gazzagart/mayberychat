@@ -27,5 +27,8 @@
   "noEncryptionWarningShown": false,
   "displayChatDetailsColumn": false,
   "colorSchemeSeedInt": 4283835834,
-  "enableSoftLogout": false
+  "enableSoftLogout": false,
+  "letsyakCalling": false,
+  "letsyakLivekitUrl": "",
+  "letsyakJwtServiceUrl": ""
 }

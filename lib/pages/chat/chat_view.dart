@@ -5,6 +5,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/letsyak/calling/widgets/call_button.dart';
 import 'package:fluffychat/pages/chat/chat.dart';
 import 'package:fluffychat/pages/chat/chat_app_bar_list_tile.dart';
 import 'package:fluffychat/pages/chat/chat_app_bar_title.dart';
@@ -224,7 +225,9 @@ class ChatView extends StatelessWidget {
                         ],
                       ),
                   ] else if (!controller.room.isArchived) ...[
-                    if ((AppSettings.experimentalVoip.value &&
+                    if (LetsYakCallButton.shouldShow(context))
+                      LetsYakCallButton(room: controller.room)
+                    else if ((AppSettings.experimentalVoip.value &&
                         Matrix.of(context).voipPlugin != null &&
                         controller.room.isDirectChat))
                       IconButton(
