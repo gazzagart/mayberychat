@@ -13,38 +13,65 @@ class VaultPageView extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(controller.widget.pickerMode ? 'Choose File' : 'Vault'),
-        leading: controller.currentPath != '/'
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: controller.navigateUp,
-              )
-            : controller.widget.pickerMode
-                ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  )
-                : null,
-        actions: [
-          if (!controller.widget.pickerMode)
-            IconButton(
-              icon: const Icon(Icons.create_new_folder_outlined),
-              tooltip: 'New folder',
-              onPressed: controller.createFolder,
+      appBar: controller.isSelecting
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: controller.clearSelection,
+              ),
+              title: Text('${controller.selectedPaths.length} selected'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.download_outlined),
+                  tooltip: 'Download selected',
+                  onPressed: controller.downloadSelected,
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: theme.colorScheme.error,
+                  ),
+                  tooltip: 'Delete selected',
+                  onPressed: controller.deleteSelected,
+                ),
+              ],
+            )
+          : AppBar(
+              title: Text(
+                controller.widget.pickerMode ? 'Choose File' : 'Vault',
+              ),
+              leading: controller.currentPath != '/'
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: controller.navigateUp,
+                    )
+                  : controller.widget.pickerMode
+                      ? IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        )
+                      : null,
+              actions: [
+                if (!controller.widget.pickerMode)
+                  IconButton(
+                    icon: const Icon(Icons.create_new_folder_outlined),
+                    tooltip: 'New folder',
+                    onPressed: controller.createFolder,
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh',
+                  onPressed: controller.refresh,
+                ),
+              ],
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: controller.refresh,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: controller.uploadFiles,
-        tooltip: 'Upload file',
-        child: const Icon(Icons.upload_file),
-      ),
+      floatingActionButton: controller.isSelecting
+          ? null
+          : FloatingActionButton(
+              onPressed: controller.uploadFiles,
+              tooltip: 'Upload file',
+              child: const Icon(Icons.upload_file),
+            ),
       body: Column(
         children: [
           // Breadcrumb
@@ -161,8 +188,9 @@ class _VaultContentBody extends StatelessWidget {
           final file = sorted[index];
           return VaultFileTile(
             file: file,
+            selected: controller.selectedPaths.contains(file.path),
             onTap: () => controller.onFileTap(file),
-            onLongPress: () => controller.deleteFile(file),
+            onLongPress: () => controller.toggleSelection(file),
           );
         },
       ),

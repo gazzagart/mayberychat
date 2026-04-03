@@ -73,7 +73,12 @@ enum AppSettings<T> {
   lastSeenSupportBanner<int>('chat.fluffy.last_seen_support_banner', 0),
   supportBannerOptOut<bool>('chat.fluffy.support_banner_opt_out', false),
   webNotificationSound<bool>('chat.fluffy.web_notification_sound', true),
-  chatFilter<String>('chat.fluffy.chat_filter', 'allChats');
+  chatFilter<String>('chat.fluffy.chat_filter', 'allChats'),
+  // File Vault
+  vaultApiBaseUrl<String>(
+    'com.letsyak.vault_api_base_url',
+    'https://vault-api.maybery.app',
+  );
 
   final String key;
   final T defaultValue;

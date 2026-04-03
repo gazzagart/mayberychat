@@ -46,7 +46,7 @@ class _VaultFolderDialogState extends State<VaultFolderDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog.adaptive(
+    return AlertDialog(
       title: const Text('New Folder'),
       content: TextField(
         controller: _controller,

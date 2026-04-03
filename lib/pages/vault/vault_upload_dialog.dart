@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:cross_file/cross_file.dart';
+import 'package:fluffychat/config/vault_config.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
 import 'package:fluffychat/utils/vault/vault_api.dart';
 import 'package:fluffychat/widgets/matrix.dart';
@@ -40,42 +43,82 @@ class _VaultUploadDialogState extends State<VaultUploadDialog> {
     final api = VaultApi(matrixClient: client);
     final total = widget.files.length;
 
+    // Pre-read all files to calculate total bytes for overall progress
+    final allBytes = <Uint8List>[];
+    var totalBytesAll = 0;
+    for (final file in widget.files) {
+      final bytes = await file.readAsBytes();
+      allBytes.add(bytes);
+      totalBytesAll += bytes.length;
+    }
+    var bytesSentAll = 0;
+
     try {
       for (var i = 0; i < total; i++) {
         final file = widget.files[i];
-        final bytes = await file.readAsBytes();
+        final bytes = allBytes[i];
+
+        if (bytes.length > VaultConfig.maxUploadSizeBytes) {
+          throw VaultApiException(
+            '${file.name} is too large (${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB). '
+            'Maximum upload size is ${VaultConfig.maxUploadSizeBytes ~/ 1024 ~/ 1024} MB.',
+            413,
+          );
+        }
+
         final mimeType = file.mimeType ?? lookupMimeType(file.path);
-        final targetPath = widget.currentPath.endsWith('/')
-            ? '${widget.currentPath}${file.name}'
-            : '${widget.currentPath}/${file.name}';
 
         setState(() {
           _status = total == 1
               ? 'Uploading ${file.name}...'
               : 'Uploading ${i + 1} of $total: ${file.name}';
-          _progress = i / total;
         });
 
         final uploadUrl = await api.getUploadUrl(
-          path: targetPath,
+          path: widget.currentPath,
           fileName: file.name,
           fileSize: bytes.length,
           mimeType: mimeType,
         );
 
-        // Upload directly to MinIO via presigned URL
-        final response = await http.put(
-          Uri.parse(uploadUrl),
-          headers: {if (mimeType != null) 'Content-Type': mimeType},
-          body: bytes,
-        );
+        // Upload with byte-level progress tracking
+        final request = http.StreamedRequest('PUT', Uri.parse(uploadUrl));
+        request.contentLength = bytes.length;
+        if (mimeType != null) {
+          request.headers['Content-Type'] = mimeType;
+        }
 
-        if (response.statusCode < 200 || response.statusCode >= 300) {
+        // Feed bytes in chunks and update progress
+        final fileBytes = bytes.length;
+        var fileSent = 0;
+        const chunkSize = 65536; // 64 KB
+
+        () async {
+          for (var offset = 0; offset < fileBytes; offset += chunkSize) {
+            final end = (offset + chunkSize < fileBytes)
+                ? offset + chunkSize
+                : fileBytes;
+            request.sink.add(Uint8List.sublistView(bytes, offset, end));
+            fileSent = end;
+            if (mounted) {
+              setState(
+                () => _progress = (bytesSentAll + fileSent) / totalBytesAll,
+              );
+            }
+          }
+          await request.sink.close();
+        }();
+
+        final streamedResponse = await request.send();
+        final statusCode = streamedResponse.statusCode;
+        if (statusCode < 200 || statusCode >= 300) {
           throw VaultApiException(
-            'Upload failed: ${response.reasonPhrase}',
-            response.statusCode,
+            'Upload failed: ${streamedResponse.reasonPhrase}',
+            statusCode,
           );
         }
+
+        bytesSentAll += bytes.length;
       }
 
       setState(() {
@@ -92,12 +135,8 @@ class _VaultUploadDialogState extends State<VaultUploadDialog> {
       if (!mounted) return;
       setState(() {
         _uploading = false;
-        _status = '';
+        _status = e.toLocalizedString(context);
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toLocalizedString(context))));
-      Navigator.of(context).pop();
     }
   }
 
@@ -105,7 +144,7 @@ class _VaultUploadDialogState extends State<VaultUploadDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AlertDialog.adaptive(
-      title: const Text('Uploading to Vault'),
+      title: Text(_uploading ? 'Uploading to Vault' : 'Upload Failed'),
       content: SizedBox(
         width: 300,
         child: Column(
@@ -117,12 +156,21 @@ class _VaultUploadDialogState extends State<VaultUploadDialog> {
             ],
             Text(
               _status,
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: _uploading ? null : theme.colorScheme.error,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
+      actions: [
+        if (!_uploading)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+      ],
     );
   }
 }

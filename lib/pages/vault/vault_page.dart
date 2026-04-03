@@ -31,6 +31,27 @@ class VaultPageController extends State<VaultPage> {
   bool loading = true;
   String? error;
 
+  // Multi-select state
+  final Set<String> selectedPaths = {};
+  bool get isSelecting => selectedPaths.isNotEmpty;
+
+  void toggleSelection(VaultFile file) {
+    setState(() {
+      if (selectedPaths.contains(file.path)) {
+        selectedPaths.remove(file.path);
+      } else {
+        selectedPaths.add(file.path);
+      }
+    });
+  }
+
+  void clearSelection() {
+    setState(() => selectedPaths.clear());
+  }
+
+  List<VaultFile> get selectedFiles =>
+      files.where((f) => selectedPaths.contains(f.path)).toList();
+
   @override
   void initState() {
     super.initState();
@@ -80,9 +101,12 @@ class VaultPageController extends State<VaultPage> {
 
   void navigateUp() {
     if (currentPath == '/') return;
-    final parts = currentPath.split('/')..removeLast();
-    if (parts.last.isEmpty) parts.removeLast();
-    currentPath = parts.isEmpty ? '/' : '${parts.join('/')}/';
+    // Strip trailing slash then find the parent
+    final trimmed = currentPath.endsWith('/')
+        ? currentPath.substring(0, currentPath.length - 1)
+        : currentPath;
+    final lastSlash = trimmed.lastIndexOf('/');
+    currentPath = lastSlash <= 0 ? '/' : '${trimmed.substring(0, lastSlash)}/';
     refresh();
   }
 
@@ -140,9 +164,12 @@ class VaultPageController extends State<VaultPage> {
     if (confirmed != true) return;
 
     try {
+      _showDeletingDialog();
       await api.deleteFile(path: file.path);
+      _dismissDeletingDialog();
       refresh();
     } on VaultApiException catch (e) {
+      _dismissDeletingDialog();
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -152,6 +179,12 @@ class VaultPageController extends State<VaultPage> {
 
   /// Handle tapping a file in the list.
   Future<void> onFileTap(VaultFile file) async {
+    // In multi-select mode, taps toggle selection
+    if (isSelecting) {
+      toggleSelection(file);
+      return;
+    }
+
     if (file.isFolder) {
       navigateToFolder(file);
       return;
@@ -225,6 +258,107 @@ class VaultPageController extends State<VaultPage> {
         ),
       ),
     );
+  }
+
+  Future<void> deleteSelected() async {
+    final selected = selectedFiles;
+    final count = selected.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog.adaptive(
+        title: Text('Delete $count ${count == 1 ? 'item' : 'items'}?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    _showDeletingDialog(count: count);
+    var errors = 0;
+    for (final file in selected) {
+      try {
+        await api.deleteFile(path: file.path);
+      } on VaultApiException {
+        errors++;
+      }
+    }
+    _dismissDeletingDialog();
+    clearSelection();
+    refresh();
+    if (errors > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete $errors item(s)')),
+      );
+    }
+  }
+
+  Future<void> downloadSelected() async {
+    final selected = selectedFiles.where((f) => !f.isFolder).toList();
+    if (selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No files selected (folders skipped)')),
+      );
+      return;
+    }
+    for (final file in selected) {
+      try {
+        final url = await api.getDownloadUrl(path: file.path);
+        if (!mounted) return;
+        UrlLauncher(context, url).launchUrl();
+      } on VaultApiException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download ${file.name}: ${e.message}'),
+          ),
+        );
+      }
+    }
+    clearSelection();
+  }
+
+  void _showDeletingDialog({int count = 1}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog.adaptive(
+          content: Row(
+            children: [
+              const CircularProgressIndicator.adaptive(),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  count > 1
+                      ? 'Deleting $count items...\nPlease wait.'
+                      : 'Deleting...\nPlease wait.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _dismissDeletingDialog() {
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
   }
 
   Future<void> _downloadFile(VaultFile file) async {

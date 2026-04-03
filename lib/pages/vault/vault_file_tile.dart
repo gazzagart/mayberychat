@@ -35,17 +35,25 @@ class VaultFileTile extends StatelessWidget {
     final theme = Theme.of(context);
     return ListTile(
       selected: selected,
-      leading: CircleAvatar(
-        backgroundColor: file.isFolder
-            ? theme.colorScheme.primaryContainer
-            : theme.colorScheme.surfaceContainerHighest,
-        child: Icon(
-          _icon(),
-          color: file.isFolder
-              ? theme.colorScheme.onPrimaryContainer
-              : theme.colorScheme.onSurfaceVariant,
-        ),
+      selectedTileColor: theme.colorScheme.primaryContainer.withValues(
+        alpha: 0.3,
       ),
+      leading: selected
+          ? CircleAvatar(
+              backgroundColor: theme.colorScheme.primary,
+              child: Icon(Icons.check, color: theme.colorScheme.onPrimary),
+            )
+          : CircleAvatar(
+              backgroundColor: file.isFolder
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerHighest,
+              child: Icon(
+                _icon(),
+                color: file.isFolder
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
       title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         file.isFolder
