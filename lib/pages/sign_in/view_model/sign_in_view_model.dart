@@ -37,7 +37,8 @@ class SignInViewModel extends ValueNotifier<SignInState> {
             .toList() ??
         [];
     final uri = Uri.tryParse(filterText);
-    final looksLikeServer = filterText.length >= 3 &&
+    final looksLikeServer =
+        filterText.length >= 3 &&
         (filterText.contains('.') ||
             filterText == 'localhost' ||
             (uri != null && uri.hasScheme && uri.host.isNotEmpty)) &&
