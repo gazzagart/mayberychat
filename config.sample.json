@@ -2,6 +2,7 @@
   "applicationName": "LetsYak",
   "defaultHomeserver": "https://chat.maybery.app",
   "presetHomeserver": "",
+  "pushNotificationsGatewayUrl": "https://push.maybery.app/_matrix/push/v1/notify",
   "welcomeText": "",
   "privacyUrl": "https://github.com/gazzagart/mayberychat/blob/main/PRIVACY.md",
   "audioRecordingNumChannels": 1,
