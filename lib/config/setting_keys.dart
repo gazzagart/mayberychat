@@ -85,6 +85,16 @@ enum AppSettings<T> {
 
   const AppSettings(this.key, this.defaultValue);
 
+  /// Deployment config keys are always written from config.json,
+  /// overriding any cached value. These are deployer-controlled settings,
+  /// not user preferences.
+  static const Set<AppSettings> deploymentConfigKeys = {
+    AppSettings.applicationName,
+    AppSettings.defaultHomeserver,
+    AppSettings.pushNotificationsGatewayUrl,
+    AppSettings.vaultApiBaseUrl,
+  };
+
   static SharedPreferences get store => _store!;
   static SharedPreferences? _store;
 
@@ -122,7 +132,12 @@ enum AppSettings<T> {
         final configJson =
             json.decode(configJsonString) as Map<String, Object?>;
         for (final setting in AppSettings.values) {
-          if (store.get(setting.key) != null) continue;
+          // Deployment config is always written from config.json so that
+          // changing the config file takes effect without clearing app data.
+          // User preferences are only written if not already set.
+          final isDeploymentConfig =
+              AppSettings.deploymentConfigKeys.contains(setting);
+          if (!isDeploymentConfig && store.get(setting.key) != null) continue;
           final configValue = configJson[setting.name];
           if (configValue == null) continue;
           if (configValue is bool) {
