@@ -1,5 +1,6 @@
 import 'package:fluffychat/pages/vault/vault_folder_dialog.dart';
 import 'package:fluffychat/pages/vault/vault_page_view.dart';
+import 'package:matrix/matrix.dart' show Logs;
 import 'package:fluffychat/pages/vault/vault_share_dialog.dart';
 import 'package:fluffychat/pages/vault/vault_upload_dialog.dart';
 import 'package:fluffychat/utils/file_selector.dart';
@@ -61,10 +62,18 @@ class VaultPageController extends State<VaultPage> {
   Future<void> _init() async {
     final client = Matrix.of(context).client;
     api = VaultApi(matrixClient: client);
+    Logs().i('[VaultPage] Using vault API base URL: ${api.baseUrl}');
+    Logs().i('[VaultPage] Matrix homeserver: ${client.homeserver}');
+    Logs().i(
+      '[VaultPage] Matrix access token present: ${client.accessToken != null}',
+    );
     try {
       await api.provision();
-    } on VaultApiException {
+    } on VaultApiException catch (e) {
       // Already provisioned — fine
+      Logs().i(
+        '[VaultPage] Provision response (expected if already set up): $e',
+      );
     }
     await refresh();
   }

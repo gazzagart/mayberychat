@@ -1,0 +1,5 @@
+{
+  "applicationName": "LetsYak",
+  "defaultHomeserver": "https://chat.maybery.app",
+  "vaultApiBaseUrl": "https://vault-api.maybery.app"
+}

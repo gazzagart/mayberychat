@@ -40,12 +40,12 @@ web/Imaging.wasm
 # Web related
 docs/tailwind.css
 
-# Local dev web config — copy web/config.json, point at localhost, do NOT commit
+# Local dev configs — point at localhost, do NOT commit.
+# flutter run -d chrome serves root config.json (dev server uses project root).
+# flutter build web uses web/config.json (copied into build/web/).
+# Copy config.sample.json → config.json and set local URLs.
+/config.json
 web/config.local.json
-
-# web/config.json is gitignored — use web/config.sample.json as template.
-# Each environment (local dev, production) has its own copy.
-web/config.json
 
 # Exceptions to above rules.
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages

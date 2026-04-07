@@ -104,6 +104,9 @@ enum AppSettings<T> {
   }
 
   static Future<SharedPreferences> init({bool loadWebConfigFile = true}) async {
+    Logs().i(
+      '[ConfigLoader] init() called — _storeNull=${_store == null}, kIsWeb=$kIsWeb, loadWebConfigFile=$loadWebConfigFile',
+    );
     if (AppSettings._store != null) return AppSettings.store;
 
     final store = AppSettings._store = await SharedPreferences.getInstance();
@@ -125,18 +128,28 @@ enum AppSettings<T> {
       await store.setBool(AppSettings.sendOnEnter.key, !PlatformInfos.isMobile);
     }
     if (kIsWeb && loadWebConfigFile) {
+      // Clear deployment config keys before loading so stale cached values
+      // (e.g. from a previous deployment) never persist across app starts.
+      Logs().i('[ConfigLoader] Clearing deployment config keys from cache...');
+      for (final setting in AppSettings.deploymentConfigKeys) {
+        await store.remove(setting.key);
+      }
       try {
-        final configJsonString = utf8.decode(
-          (await http.get(Uri.parse('config.json'))).bodyBytes,
+        final response = await http.get(Uri.parse('config.json'));
+        Logs().i(
+          '[ConfigLoader] config.json HTTP status: ${response.statusCode}',
         );
+        final configJsonString = utf8.decode(response.bodyBytes);
+        Logs().i('[ConfigLoader] config.json content: $configJsonString');
         final configJson =
             json.decode(configJsonString) as Map<String, Object?>;
         for (final setting in AppSettings.values) {
           // Deployment config is always written from config.json so that
           // changing the config file takes effect without clearing app data.
           // User preferences are only written if not already set.
-          final isDeploymentConfig =
-              AppSettings.deploymentConfigKeys.contains(setting);
+          final isDeploymentConfig = AppSettings.deploymentConfigKeys.contains(
+            setting,
+          );
           if (!isDeploymentConfig && store.get(setting.key) != null) continue;
           final configValue = configJson[setting.name];
           if (configValue == null) continue;
@@ -153,10 +166,16 @@ enum AppSettings<T> {
             await store.setDouble(setting.key, configValue);
           }
         }
-      } on FormatException catch (_) {
-        Logs().v('[ConfigLoader] config.json not found');
+        Logs().i(
+          '[ConfigLoader] vaultApiBaseUrl after load: ${AppSettings.vaultApiBaseUrl.value}',
+        );
+        Logs().i(
+          '[ConfigLoader] defaultHomeserver after load: ${AppSettings.defaultHomeserver.value}',
+        );
+      } on FormatException catch (e) {
+        Logs().w('[ConfigLoader] config.json parse error', e);
       } catch (e) {
-        Logs().v('[ConfigLoader] config.json not found', e);
+        Logs().w('[ConfigLoader] config.json load error', e);
       }
     }
 
