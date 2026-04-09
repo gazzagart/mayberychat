@@ -48,11 +48,14 @@ class SpacesNavigationRail extends StatelessWidget {
                   Expanded(
                     child: ListView.builder(
                       scrollDirection: Axis.vertical,
-                      itemCount: allSpaces.length + 2,
+                      itemCount: allSpaces.length + 3,
                       itemBuilder: (context, i) {
                         if (i == 0) {
+                          final isOnVault = GoRouterState.of(
+                            context,
+                          ).uri.toString().startsWith('/rooms/vault');
                           return NaviRailItem(
-                            isSelected: activeSpaceId == null,
+                            isSelected: activeSpaceId == null && !isOnVault,
                             onTap: onGoToChats,
                             icon: const Padding(
                               padding: EdgeInsets.all(8.0),
@@ -66,7 +69,25 @@ class SpacesNavigationRail extends StatelessWidget {
                             unreadBadgeFilter: (room) => true,
                           );
                         }
-                        i--;
+                        if (i == 1) {
+                          final isOnVault = GoRouterState.of(
+                            context,
+                          ).uri.toString().startsWith('/rooms/vault');
+                          return NaviRailItem(
+                            isSelected: isOnVault,
+                            onTap: () => context.go('/rooms/vault'),
+                            icon: const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Icon(Icons.cloud_outlined),
+                            ),
+                            selectedIcon: const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Icon(Icons.cloud),
+                            ),
+                            toolTip: 'Vault',
+                          );
+                        }
+                        i -= 2;
                         if (i == allSpaces.length) {
                           return NaviRailItem(
                             isSelected: false,

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/other_party_can_receive.dart';
+import 'package:fluffychat/utils/vault/vault_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart';
@@ -97,6 +98,7 @@ extension LocalizedExceptionExtension on Object {
         exceptionContext == ExceptionContext.checkServerSupportInfo) {
       return L10n.of(context).noContactInformationProvided;
     }
+    if (this is VaultApiException) return (this as VaultApiException).message;
     if (this is String) return toString();
     if (this is UiaException) return toString();
 

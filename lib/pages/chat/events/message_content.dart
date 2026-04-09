@@ -8,8 +8,10 @@ import 'package:fluffychat/pages/image_viewer/image_viewer.dart';
 import 'package:fluffychat/utils/adaptive_bottom_sheet.dart';
 import 'package:fluffychat/utils/date_time_extension.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:fluffychat/utils/vault/vault_event_content.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/matrix.dart';
+import 'package:fluffychat/widgets/vault/vault_file_card.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/encryption.dart';
@@ -113,6 +115,12 @@ class MessageContent extends StatelessWidget {
       case EventTypes.Encrypted:
       case EventTypes.Sticker:
         switch (event.messageType) {
+          case VaultEventContent.msgtype:
+            return VaultFileCard(
+              event: event,
+              textColor: textColor,
+              linkColor: linkColor,
+            );
           case MessageTypes.Image:
           case MessageTypes.Sticker:
             if (event.redacted) continue textmessage;

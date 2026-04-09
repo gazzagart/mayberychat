@@ -215,6 +215,20 @@ class ChatInputRow extends StatelessWidget {
                             contentPadding: const EdgeInsets.all(0),
                           ),
                         ),
+                        PopupMenuItem(
+                          value: AddPopupMenuActions.vaultFile,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  theme.colorScheme.onPrimaryContainer,
+                              foregroundColor:
+                                  theme.colorScheme.primaryContainer,
+                              child: const Icon(Icons.cloud_outlined),
+                            ),
+                            title: const Text('From Vault'),
+                            contentPadding: const EdgeInsets.all(0),
+                          ),
+                        ),
                       ],
                     ),
                   ),

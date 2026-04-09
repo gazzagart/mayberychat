@@ -1,0 +1,6 @@
+{
+  "applicationName": "LetsYak",
+  "defaultHomeserver": "https://chat.maybery.app",
+  "vaultApiBaseUrl": "https://vault-api.maybery.app",
+  "pushNotificationsGatewayUrl": "https://push.maybery.app/_matrix/push/v1/notify"
+}
