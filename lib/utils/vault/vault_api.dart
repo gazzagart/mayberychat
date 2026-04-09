@@ -188,6 +188,20 @@ class VaultApi {
         .toList();
   }
 
+  /// Returns all active shares targeting [roomId], filtered to the current user's rooms.
+  Future<List<VaultShare>> listRoomShares({required String roomId}) async {
+    final encoded = Uri.encodeComponent(roomId);
+    final response = await http.get(
+      _uri('/api/v1/shares/room/$encoded'),
+      headers: _headers,
+    );
+    _ensureSuccess(response);
+    final list = json.decode(response.body) as List;
+    return list
+        .map((e) => VaultShare.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────
 
   void _ensureSuccess(http.Response response) {

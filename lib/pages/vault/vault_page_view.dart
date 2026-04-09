@@ -1,6 +1,7 @@
 import 'package:fluffychat/pages/vault/vault_file_tile.dart';
 import 'package:fluffychat/pages/vault/vault_page.dart';
 import 'package:fluffychat/pages/vault/vault_quota_widget.dart';
+import 'package:fluffychat/pages/vault/vault_shared_tile.dart';
 import 'package:flutter/material.dart';
 
 class VaultPageView extends StatelessWidget {
@@ -11,6 +12,7 @@ class VaultPageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final showTabs = !controller.widget.pickerMode;
 
     return Scaffold(
       appBar: controller.isSelecting
@@ -46,11 +48,11 @@ class VaultPageView extends StatelessWidget {
                       onPressed: controller.navigateUp,
                     )
                   : controller.widget.pickerMode
-                      ? IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.of(context).pop(),
-                        )
-                      : null,
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    )
+                  : null,
               actions: [
                 if (!controller.widget.pickerMode)
                   IconButton(
@@ -64,44 +66,74 @@ class VaultPageView extends StatelessWidget {
                   onPressed: controller.refresh,
                 ),
               ],
+              bottom: showTabs
+                  ? TabBar(
+                      controller: controller.tabController,
+                      tabs: const [
+                        Tab(icon: Icon(Icons.cloud_outlined), text: 'My Files'),
+                        Tab(
+                          icon: Icon(Icons.people_outline),
+                          text: 'Shared with me',
+                        ),
+                      ],
+                    )
+                  : null,
             ),
-      floatingActionButton: controller.isSelecting
+      floatingActionButton:
+          controller.isSelecting ||
+              (showTabs && controller.tabController.index == 1)
           ? null
           : FloatingActionButton(
               onPressed: controller.uploadFiles,
               tooltip: 'Upload file',
               child: const Icon(Icons.upload_file),
             ),
-      body: Column(
-        children: [
-          // Breadcrumb
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: Text(
-              controller.breadcrumb,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // Quota bar
-          VaultQuotaWidget(quota: controller.quota),
-          const Divider(height: 1),
-          // File list
-          Expanded(
-            child: _VaultContentBody(controller: controller),
-          ),
-        ],
-      ),
+      body: showTabs
+          ? TabBarView(
+              controller: controller.tabController,
+              children: [
+                _MyFilesBody(controller: controller),
+                _SharedWithMeBody(controller: controller),
+              ],
+            )
+          : _MyFilesBody(controller: controller),
     );
   }
 }
+
+// ── My Files tab ──────────────────────────────────────────────────
+
+class _MyFilesBody extends StatelessWidget {
+  final VaultPageController controller;
+
+  const _MyFilesBody({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Text(
+            controller.breadcrumb,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        VaultQuotaWidget(quota: controller.quota),
+        const Divider(height: 1),
+        Expanded(child: _VaultContentBody(controller: controller)),
+      ],
+    );
+  }
+}
+
+// ── File list (used inside My Files tab) ─────────────────────────
 
 class _VaultContentBody extends StatelessWidget {
   final VaultPageController controller;
@@ -173,7 +205,7 @@ class _VaultContentBody extends StatelessWidget {
     }
 
     // Sort: folders first, then by name
-    final sorted = List<dynamic>.from(controller.files)
+    final sorted = controller.files.toList()
       ..sort((a, b) {
         if (a.isFolder && !b.isFolder) return -1;
         if (!a.isFolder && b.isFolder) return 1;
@@ -191,6 +223,88 @@ class _VaultContentBody extends StatelessWidget {
             selected: controller.selectedPaths.contains(file.path),
             onTap: () => controller.onFileTap(file),
             onLongPress: () => controller.toggleSelection(file),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Shared with me tab ────────────────────────────────────────────
+
+class _SharedWithMeBody extends StatelessWidget {
+  final VaultPageController controller;
+
+  const _SharedWithMeBody({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.sharedWithMeLoading) {
+      return const Center(child: CircularProgressIndicator.adaptive());
+    }
+
+    if (controller.sharedWithMeError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(controller.sharedWithMeError!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: controller.refreshSharedWithMe,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (controller.sharedWithMe.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.people_outline,
+                size: 48,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No files have been shared with your rooms yet.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: controller.refreshSharedWithMe,
+      child: ListView.builder(
+        itemCount: controller.sharedWithMe.length,
+        itemBuilder: (context, index) {
+          final share = controller.sharedWithMe[index];
+          return VaultSharedTile(
+            share: share,
+            onTap: () => controller.openShareLink(share),
+            onDownload: () => controller.downloadShare(share),
           );
         },
       ),

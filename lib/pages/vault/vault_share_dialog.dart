@@ -68,7 +68,9 @@ class _VaultShareDialogState extends State<VaultShareDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog.adaptive(
+    // Use AlertDialog (not .adaptive) so the content always has a Material
+    // ancestor — required by ListTile and SwitchListTile.
+    return AlertDialog(
       title: const Text('Share File'),
       content: SizedBox(
         width: 320,
@@ -87,7 +89,7 @@ class _VaultShareDialogState extends State<VaultShareDialog> {
               subtitle: Text(widget.file.sizeString),
             ),
             const Divider(),
-            SwitchListTile.adaptive(
+            SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Set expiry'),
               subtitle: _hasExpiry
@@ -101,7 +103,7 @@ class _VaultShareDialogState extends State<VaultShareDialog> {
                 if (v) _pickExpiry();
               },
             ),
-            SwitchListTile.adaptive(
+            SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Password protect'),
               value: _hasPassword,
