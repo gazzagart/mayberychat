@@ -50,32 +50,113 @@ class VaultQuota {
   final int usedBytes;
   final int totalBytes;
   final String tier;
+  final String? tierLabel;
+  final String? limitLabel;
+  final int remainingBytes;
+  final bool isOverQuota;
+  final bool upgradeAvailable;
+  final String? upgradeTier;
+  final String? upgradeTierLabel;
+  final int? upgradeLimitBytes;
+  final String? upgradeLimitLabel;
 
   const VaultQuota({
     required this.usedBytes,
     required this.totalBytes,
     this.tier = 'free',
+    this.tierLabel,
+    this.limitLabel,
+    required this.remainingBytes,
+    this.isOverQuota = false,
+    this.upgradeAvailable = false,
+    this.upgradeTier,
+    this.upgradeTierLabel,
+    this.upgradeLimitBytes,
+    this.upgradeLimitLabel,
   });
 
   double get usagePercent =>
       totalBytes > 0 ? (usedBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
 
+  bool get isFree => tier.toLowerCase() == 'free';
+
+  bool get isAtLimit => isOverQuota || usedBytes >= totalBytes;
+
+  bool get isNearLimit => !isAtLimit && usagePercent >= 0.8;
+
+  String get planLabel => '${tierLabel ?? _titleCase(tier)} plan';
+
   String get usedString => usedBytes.toDouble().sizeString;
 
   String get totalString => totalBytes.toDouble().sizeString;
 
-  factory VaultQuota.fromJson(Map<String, dynamic> json) => VaultQuota(
-    usedBytes: json['used_bytes'] as int? ?? 0,
-    totalBytes: json['total_bytes'] as int? ?? 524288000,
-    tier: json['tier'] as String? ?? 'free',
-  );
+  String get remainingString => remainingBytes.toDouble().sizeString;
 
-  factory VaultQuota.empty() =>
-      const VaultQuota(usedBytes: 0, totalBytes: 524288000);
+  String get displayLimitLabel => limitLabel ?? totalString;
+
+  String? get upgradeMessage {
+    if (!upgradeAvailable) return null;
+
+    final label = upgradeTierLabel ?? _titleCase(upgradeTier ?? 'plus');
+    final limit = upgradeLimitLabel ?? upgradeLimitBytes?.toDouble().sizeString;
+    if (limit == null) return '$label has more Vault storage';
+    return '$label includes $limit';
+  }
+
+  factory VaultQuota.fromJson(Map<String, dynamic> json) {
+    final usedBytes = _intFromJson(json['used_bytes'], 0);
+    final totalBytes = _intFromJson(json['total_bytes'], 524288000);
+    final defaultRemainingBytes = totalBytes > usedBytes
+        ? totalBytes - usedBytes
+        : 0;
+    final remainingBytes = _intFromJson(
+      json['remaining_bytes'],
+      defaultRemainingBytes,
+    );
+
+    return VaultQuota(
+      usedBytes: usedBytes,
+      totalBytes: totalBytes,
+      tier: json['tier'] as String? ?? 'free',
+      tierLabel: json['tier_label'] as String?,
+      limitLabel: json['limit_label'] as String?,
+      remainingBytes: remainingBytes,
+      isOverQuota: json['is_over_quota'] as bool? ?? usedBytes > totalBytes,
+      upgradeAvailable: json['upgrade_available'] as bool? ?? false,
+      upgradeTier: json['upgrade_tier'] as String?,
+      upgradeTierLabel: json['upgrade_tier_label'] as String?,
+      upgradeLimitBytes: _nullableIntFromJson(json['upgrade_limit_bytes']),
+      upgradeLimitLabel: json['upgrade_limit_label'] as String?,
+    );
+  }
+
+  factory VaultQuota.empty() => const VaultQuota(
+    usedBytes: 0,
+    totalBytes: 524288000,
+    remainingBytes: 524288000,
+  );
+}
+
+int _intFromJson(Object? value, int fallback) => switch (value) {
+  int() => value,
+  num() => value.toInt(),
+  _ => fallback,
+};
+
+int? _nullableIntFromJson(Object? value) => switch (value) {
+  int() => value,
+  num() => value.toInt(),
+  _ => null,
+};
+
+String _titleCase(String value) {
+  if (value.isEmpty) return value;
+  return value.substring(0, 1).toUpperCase() + value.substring(1);
 }
 
 class VaultShare {
   final String shareId;
+  final String? objectKey;
   final String fileName;
   final int fileSize;
   final String? mimeType;
@@ -90,6 +171,7 @@ class VaultShare {
 
   const VaultShare({
     required this.shareId,
+    this.objectKey,
     required this.fileName,
     required this.fileSize,
     this.mimeType,
@@ -107,6 +189,7 @@ class VaultShare {
 
   factory VaultShare.fromJson(Map<String, dynamic> json) => VaultShare(
     shareId: json['share_id'] as String,
+    objectKey: json['object_key'] as String?,
     fileName: json['file_name'] as String,
     fileSize: json['file_size'] as int? ?? 0,
     mimeType: json['mime_type'] as String?,
@@ -126,6 +209,7 @@ class VaultShare {
 
   Map<String, dynamic> toJson() => {
     'share_id': shareId,
+    'object_key': objectKey,
     'file_name': fileName,
     'file_size': fileSize,
     'mime_type': mimeType,

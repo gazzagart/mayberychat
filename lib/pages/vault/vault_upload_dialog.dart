@@ -135,7 +135,9 @@ class _VaultUploadDialogState extends State<VaultUploadDialog> {
       if (!mounted) return;
       setState(() {
         _uploading = false;
-        _status = e.toLocalizedString(context);
+        _status = e is VaultApiException
+            ? e.friendlyMessage
+            : e.toLocalizedString(context);
       });
     }
   }

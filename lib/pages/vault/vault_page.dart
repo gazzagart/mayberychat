@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:fluffychat/pages/vault/vault_folder_dialog.dart';
+import 'package:fluffychat/pages/vault/vault_manage_shares_dialog.dart';
 import 'package:fluffychat/pages/vault/vault_page_view.dart';
-import 'package:matrix/matrix.dart' show Logs;
+import 'package:fluffychat/pages/vault/vault_preview_page.dart';
 import 'package:fluffychat/pages/vault/vault_share_dialog.dart';
 import 'package:fluffychat/pages/vault/vault_upload_dialog.dart';
 import 'package:fluffychat/utils/file_selector.dart';
 import 'package:fluffychat/utils/url_launcher.dart';
 import 'package:fluffychat/utils/vault/vault_api.dart';
+import 'package:fluffychat/utils/vault/vault_event_content.dart';
 import 'package:fluffychat/utils/vault/vault_models.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:matrix/matrix.dart' show EventTypes, Logs;
 
 /// Controller and entry point for the vault file browser.
 ///
@@ -40,6 +45,7 @@ class VaultPageController extends State<VaultPage>
   List<VaultShare> sharedWithMe = [];
   bool sharedWithMeLoading = false;
   String? sharedWithMeError;
+  StreamSubscription? _vaultSyncSub;
 
   // Multi-select state
   final Set<String> selectedPaths = {};
@@ -56,7 +62,7 @@ class VaultPageController extends State<VaultPage>
   }
 
   void clearSelection() {
-    setState(() => selectedPaths.clear());
+    setState(selectedPaths.clear);
   }
 
   List<VaultFile> get selectedFiles =>
@@ -75,11 +81,31 @@ class VaultPageController extends State<VaultPage>
         refreshSharedWithMe();
       }
     });
+    _vaultSyncSub = Matrix.of(context).client.onSync.stream
+        .where(
+          (syncUpdate) =>
+              syncUpdate.rooms?.join?.values.any(
+                (roomUpdate) =>
+                    roomUpdate.timeline?.events?.any(
+                      (event) =>
+                          event.type == EventTypes.Message &&
+                          event.content['msgtype'] == VaultEventContent.msgtype,
+                    ) ??
+                    false,
+              ) ??
+              false,
+        )
+        .listen((_) {
+          if (tabController.index == 1 && !sharedWithMeLoading) {
+            refreshSharedWithMe();
+          }
+        });
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
   @override
   void dispose() {
+    _vaultSyncSub?.cancel();
     tabController.dispose();
     super.dispose();
   }
@@ -135,35 +161,19 @@ class VaultPageController extends State<VaultPage>
       sharedWithMeError = null;
     });
     try {
-      final client = Matrix.of(context).client;
-      // Collect all joined room IDs.
-      final roomIds = client.rooms.map((r) => r.id).toList();
-      // Fetch room shares in parallel (up to 10 at a time to avoid flooding).
-      final results = <VaultShare>[];
-      const batchSize = 10;
-      for (var i = 0; i < roomIds.length; i += batchSize) {
-        final batch = roomIds.sublist(
-          i,
-          (i + batchSize).clamp(0, roomIds.length),
-        );
-        final batchResults = await Future.wait(
-          batch.map(
-            (id) => api
-                .listRoomShares(roomId: id)
-                .catchError((_) => <VaultShare>[]),
-          ),
-        );
-        for (final shares in batchResults) {
-          results.addAll(shares);
-        }
-      }
-      // Deduplicate by share ID (a share could appear in multiple queries).
+      final results = await api.listSharedWithMe();
       final seen = <String>{};
       final deduped = results.where((s) => seen.add(s.shareId)).toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (!mounted) return;
       setState(() {
         sharedWithMe = deduped;
+        sharedWithMeLoading = false;
+      });
+    } on VaultApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        sharedWithMeError = _sharedWithMeErrorMessage(e);
         sharedWithMeLoading = false;
       });
     } catch (e) {
@@ -173,6 +183,19 @@ class VaultPageController extends State<VaultPage>
         sharedWithMeLoading = false;
       });
     }
+  }
+
+  String _sharedWithMeErrorMessage(VaultApiException error) {
+    if (error.statusCode == 401) {
+      return 'Your session expired. Please sign in again, then retry.';
+    }
+    if (error.statusCode == 502 || error.statusCode == 503) {
+      return 'Unable to check your joined rooms right now. Please retry.';
+    }
+    if (error.statusCode >= 500) {
+      return 'Vault could not load shared files right now. Please retry.';
+    }
+    return error.message;
   }
 
   void navigateToFolder(VaultFile folder) {
@@ -284,7 +307,12 @@ class VaultPageController extends State<VaultPage>
       return;
     }
 
-    // Normal mode: show actions bottom sheet
+    if (vaultPreviewTypeFor(file) != VaultPreviewType.download) {
+      await _openPreview(file);
+      return;
+    }
+
+    // Normal mode: show actions bottom sheet for file types without preview.
     _showFileActions(file);
   }
 
@@ -307,31 +335,16 @@ class VaultPageController extends State<VaultPage>
               leading: const Icon(Icons.share_outlined),
               title: const Text('Share link'),
               onTap: () async {
-                // Capture the outer scaffold context before popping the bottom
-                // sheet. After pop(), the sheet's BuildContext no longer has a
-                // Material ancestor, so using `this.context` directly would
-                // throw "No Material widget found".
-                final scaffoldContext = this.context;
                 Navigator.of(context).pop();
-                final share = await showDialog<VaultShare>(
-                  context: scaffoldContext,
-                  builder: (ctx) => VaultShareDialog(file: file),
-                );
-                if (share != null && mounted) {
-                  await Clipboard.setData(ClipboardData(text: share.vaultUrl));
-                  ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                    SnackBar(
-                      content: Text('Share link copied to clipboard'),
-                      action: SnackBarAction(
-                        label: 'Open',
-                        onPressed: () => UrlLauncher(
-                          scaffoldContext,
-                          share.vaultUrl,
-                        ).launchUrl(),
-                      ),
-                    ),
-                  );
-                }
+                await _createShareLink(file);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_outlined),
+              title: const Text('Manage shares'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _manageShares(file);
               },
             ),
             ListTile(
@@ -352,6 +365,57 @@ class VaultPageController extends State<VaultPage>
         ),
       ),
     );
+  }
+
+  Future<void> _manageShares(VaultFile file) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => VaultManageSharesDialog(file: file, api: api),
+    );
+  }
+
+  Future<void> _openPreview(VaultFile file) async {
+    final action = await Navigator.of(context).push<VaultPreviewAction>(
+      MaterialPageRoute(
+        builder: (context) => VaultPreviewPage(
+          file: file,
+          loadDownloadUrl: (file) => api.getDownloadUrl(path: file.path),
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case VaultPreviewAction.shareLink:
+        await _createShareLink(file);
+      case VaultPreviewAction.manageShares:
+        await _manageShares(file);
+      case VaultPreviewAction.delete:
+        await deleteFile(file);
+    }
+  }
+
+  Future<void> _createShareLink(VaultFile file) async {
+    final scaffoldContext = context;
+    final scaffoldMessenger = ScaffoldMessenger.of(scaffoldContext);
+    final share = await showDialog<VaultShare>(
+      context: scaffoldContext,
+      builder: (context) => VaultShareDialog(file: file),
+    );
+    if (share != null && mounted && scaffoldContext.mounted) {
+      await Clipboard.setData(ClipboardData(text: share.vaultUrl));
+      if (!mounted || !scaffoldContext.mounted) return;
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: const Text('Share link copied to clipboard'),
+          action: SnackBarAction(
+            label: 'Open',
+            onPressed: () =>
+                UrlLauncher(scaffoldContext, share.vaultUrl).launchUrl(),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> deleteSelected() async {

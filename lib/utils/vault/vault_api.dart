@@ -11,9 +11,14 @@ import 'package:matrix/matrix.dart';
 class VaultApi {
   final Client matrixClient;
   final String baseUrl;
+  final http.Client httpClient;
 
-  VaultApi({required this.matrixClient, String? baseUrl})
-    : baseUrl = baseUrl ?? VaultConfig.vaultApiBaseUrl;
+  VaultApi({
+    required this.matrixClient,
+    String? baseUrl,
+    http.Client? httpClient,
+  }) : baseUrl = baseUrl ?? VaultConfig.vaultApiBaseUrl,
+       httpClient = httpClient ?? http.Client();
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer ${matrixClient.accessToken}',
@@ -28,7 +33,7 @@ class VaultApi {
   /// Provision the user's vault bucket. Safe to call multiple times
   /// (the server is idempotent).
   Future<void> provision() async {
-    final response = await http.post(
+    final response = await httpClient.post(
       _uri('/api/v1/auth/provision'),
       headers: _headers,
     );
@@ -38,7 +43,10 @@ class VaultApi {
   // ── Quota ─────────────────────────────────────────────────────────
 
   Future<VaultQuota> getQuota() async {
-    final response = await http.get(_uri('/api/v1/quota'), headers: _headers);
+    final response = await httpClient.get(
+      _uri('/api/v1/quota'),
+      headers: _headers,
+    );
     _ensureSuccess(response);
     return VaultQuota.fromJson(
       json.decode(response.body) as Map<String, dynamic>,
@@ -48,7 +56,7 @@ class VaultApi {
   // ── Files ─────────────────────────────────────────────────────────
 
   Future<List<VaultFile>> listFiles({String path = '/'}) async {
-    final response = await http.get(
+    final response = await httpClient.get(
       _uri('/api/v1/files', {'path': path}),
       headers: _headers,
     );
@@ -66,15 +74,17 @@ class VaultApi {
     required int fileSize,
     String? mimeType,
   }) async {
-    final response = await http.post(
+    final requestBody = <String, dynamic>{
+      'path': path,
+      'file_name': fileName,
+      'file_size': fileSize,
+    };
+    if (mimeType != null) requestBody['mime_type'] = mimeType;
+
+    final response = await httpClient.post(
       _uri('/api/v1/files/upload-url'),
       headers: _headers,
-      body: json.encode({
-        'path': path,
-        'file_name': fileName,
-        'file_size': fileSize,
-        if (mimeType != null) 'mime_type': mimeType,
-      }),
+      body: json.encode(requestBody),
     );
     _ensureSuccess(response);
     final data = json.decode(response.body) as Map<String, dynamic>;
@@ -83,7 +93,7 @@ class VaultApi {
 
   /// Returns a presigned GET URL for downloading a file.
   Future<String> getDownloadUrl({required String path}) async {
-    final response = await http.post(
+    final response = await httpClient.post(
       _uri('/api/v1/files/download-url'),
       headers: _headers,
       body: json.encode({'path': path}),
@@ -94,7 +104,7 @@ class VaultApi {
   }
 
   Future<void> createFolder({required String path}) async {
-    final response = await http.post(
+    final response = await httpClient.post(
       _uri('/api/v1/files/folder'),
       headers: _headers,
       body: json.encode({'path': path}),
@@ -103,7 +113,7 @@ class VaultApi {
   }
 
   Future<void> deleteFile({required String path}) async {
-    final response = await http.delete(
+    final response = await httpClient.delete(
       _uri('/api/v1/files', {'path': path}),
       headers: _headers,
     );
@@ -114,7 +124,7 @@ class VaultApi {
     required String fromPath,
     required String toPath,
   }) async {
-    final response = await http.post(
+    final response = await httpClient.post(
       _uri('/api/v1/files/move'),
       headers: _headers,
       body: json.encode({'from': fromPath, 'to': toPath}),
@@ -136,20 +146,24 @@ class VaultApi {
     DateTime? expiresAt,
     int? maxDownloads,
   }) async {
-    final response = await http.post(
+    final requestBody = <String, dynamic>{
+      'object_key': objectKey,
+      'file_name': fileName,
+      'file_size': fileSize,
+      'share_type': shareType,
+    };
+    if (mimeType != null) requestBody['mime_type'] = mimeType;
+    if (targetId != null) requestBody['target_id'] = targetId;
+    if (password != null) requestBody['password'] = password;
+    if (expiresAt != null) {
+      requestBody['expires_at'] = expiresAt.toIso8601String();
+    }
+    if (maxDownloads != null) requestBody['max_downloads'] = maxDownloads;
+
+    final response = await httpClient.post(
       _uri('/api/v1/shares'),
       headers: _headers,
-      body: json.encode({
-        'object_key': objectKey,
-        'file_name': fileName,
-        'file_size': fileSize,
-        if (mimeType != null) 'mime_type': mimeType,
-        if (targetId != null) 'target_id': targetId,
-        'share_type': shareType,
-        if (password != null) 'password': password,
-        if (expiresAt != null) 'expires_at': expiresAt.toIso8601String(),
-        if (maxDownloads != null) 'max_downloads': maxDownloads,
-      }),
+      body: json.encode(requestBody),
     );
     _ensureSuccess(response);
     return VaultShare.fromJson(
@@ -159,7 +173,7 @@ class VaultApi {
 
   /// Get the presigned download URL for a shared file.
   Future<String> getShareDownloadUrl({required String shareId}) async {
-    final response = await http.get(
+    final response = await httpClient.get(
       _uri('/api/v1/shares/$shareId/download'),
       headers: _headers,
     );
@@ -169,7 +183,7 @@ class VaultApi {
   }
 
   Future<void> revokeShare({required String shareId}) async {
-    final response = await http.delete(
+    final response = await httpClient.delete(
       _uri('/api/v1/shares/$shareId'),
       headers: _headers,
     );
@@ -177,8 +191,21 @@ class VaultApi {
   }
 
   Future<List<VaultShare>> listMyShares() async {
-    final response = await http.get(
+    final response = await httpClient.get(
       _uri('/api/v1/shares/mine'),
+      headers: _headers,
+    );
+    _ensureSuccess(response);
+    final list = json.decode(response.body) as List;
+    return list
+        .map((e) => VaultShare.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Returns active room shares from rooms the current user is joined to.
+  Future<List<VaultShare>> listSharedWithMe() async {
+    final response = await httpClient.get(
+      _uri('/api/v1/shares/shared-with-me'),
       headers: _headers,
     );
     _ensureSuccess(response);
@@ -191,7 +218,7 @@ class VaultApi {
   /// Returns all active shares targeting [roomId], filtered to the current user's rooms.
   Future<List<VaultShare>> listRoomShares({required String roomId}) async {
     final encoded = Uri.encodeComponent(roomId);
-    final response = await http.get(
+    final response = await httpClient.get(
       _uri('/api/v1/shares/room/$encoded'),
       headers: _headers,
     );
@@ -224,6 +251,13 @@ class VaultApiException implements Exception {
   final int statusCode;
 
   const VaultApiException(this.message, this.statusCode);
+
+  bool get isQuotaExceeded =>
+      statusCode == 403 && message.toLowerCase().contains('quota');
+
+  String get friendlyMessage => isQuotaExceeded
+      ? 'Your Vault is full. Delete files or upgrade to Plus for 5 GB.'
+      : message;
 
   @override
   String toString() => 'VaultApiException($statusCode): $message';

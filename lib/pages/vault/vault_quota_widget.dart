@@ -10,11 +10,15 @@ class VaultQuotaWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = quota.usagePercent > 0.9
+    final color = quota.isAtLimit
         ? theme.colorScheme.error
-        : quota.usagePercent > 0.7
-            ? theme.colorScheme.tertiary
-            : theme.colorScheme.primary;
+        : quota.isNearLimit
+        ? theme.colorScheme.tertiary
+        : theme.colorScheme.primary;
+    final statusText = quota.isAtLimit
+        ? 'Storage full'
+        : '${quota.remainingString} remaining';
+    final upgradeMessage = quota.upgradeMessage;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -26,13 +30,15 @@ class VaultQuotaWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${quota.usedString} of ${quota.totalString} used',
-                style: theme.textTheme.bodySmall,
+                quota.planLabel,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
-                quota.tier.toUpperCase(),
+                statusText,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: color,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -48,6 +54,22 @@ class VaultQuotaWidget extends StatelessWidget {
               minHeight: 6,
             ),
           ),
+          const SizedBox(height: 6),
+          Text(
+            '${quota.usedString} of ${quota.displayLimitLabel} used',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (upgradeMessage != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              upgradeMessage,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );
