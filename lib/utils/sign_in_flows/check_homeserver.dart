@@ -27,11 +27,16 @@ Future<void> connectToHomeserverFlow(
       homeserver = Uri.https(homeserverInput, '');
     }
     final l10n = L10n.of(context);
-    final client = await Matrix.of(context).getLoginClient();
+    final matrix = Matrix.of(context);
+    final client = await matrix.getLoginClient();
     final (_, _, loginFlows, authMetadata) = await client.checkHomeserver(
       homeserver,
       fetchAuthMetadata: true,
     );
+    final workspace = homeserverData.workspace;
+    if (workspace != null) {
+      await matrix.setWorkspaceForClient(client, workspace);
+    }
 
     final regLink = homeserverData.regLink;
     final supportsSso = loginFlows.any((flow) => flow.type == 'm.login.sso');
@@ -73,7 +78,7 @@ Future<void> connectToHomeserverFlow(
 
     if (context.mounted) {
       setState(AsyncSnapshot.withData(ConnectionState.done, true));
-      context.go('/backup');
+      context.go(matrix.postLoginRouteForClient(client));
     }
   } catch (e, s) {
     Logs().w('Unable to login', e, s);

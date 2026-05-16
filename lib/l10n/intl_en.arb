@@ -2226,7 +2226,7 @@
     "reopenChat": "Reopen chat",
     "noBackupWarning": "Warning! Without enabling chat backup, you will lose access to your encrypted messages. It is highly recommended to enable the chat backup first before logging out.",
     "noOtherDevicesFound": "No other devices found",
-    "fileIsTooBigForServer": "Unable to send! The server only supports attachments up to {max}.",
+    "fileIsTooBigForServer": "This file is too large for chat. Chat attachments can be up to {max}. Use Vault for larger files.",
     "@fileIsTooBigForServer": {
         "type": "String",
         "placeholders": {

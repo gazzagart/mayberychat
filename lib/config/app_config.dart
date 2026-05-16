@@ -20,6 +20,7 @@ abstract class AppConfig {
   static const double borderRadius = 16.0;
   static const double spaceBorderRadius = 11.0;
   static const double columnWidth = 360.0;
+  static const int chatMaxUploadFallbackBytes = 50 * 1024 * 1024;
 
   static const String enablePushTutorial =
       'https://letsyak.com/help/push-notifications';

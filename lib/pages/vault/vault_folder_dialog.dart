@@ -28,8 +28,12 @@ class _VaultFolderDialogState extends State<VaultFolderDialog> {
 
     setState(() => _loading = true);
     try {
-      final client = Matrix.of(context).client;
-      final api = VaultApi(matrixClient: client);
+      final matrix = Matrix.of(context);
+      final client = matrix.client;
+      final api = VaultApi(
+        matrixClient: client,
+        baseUrl: matrix.activeWorkspace?.vaultApiUrl,
+      );
       final path = widget.currentPath.endsWith('/')
           ? '${widget.currentPath}$name/'
           : '${widget.currentPath}/$name/';

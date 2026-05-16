@@ -6,7 +6,6 @@ import 'package:fluffychat/utils/localized_exception_extension.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:fluffychat/utils/other_party_can_receive.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
-import 'package:fluffychat/utils/size_string.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/dialog_text_field.dart';
 import 'package:flutter/cupertino.dart';
@@ -15,6 +14,7 @@ import 'package:matrix/matrix.dart' hide Result;
 import 'package:mime/mime.dart';
 
 import '../../utils/resize_video.dart';
+import 'chat_upload_limits.dart';
 
 class SendFileDialog extends StatefulWidget {
   final Room room;
@@ -42,6 +42,33 @@ class SendFileDialogState extends State<SendFileDialog> {
   static const int minSizeToCompress = 20 * 1000;
 
   final TextEditingController _labelTextController = TextEditingController();
+  late final Future<_ChatUploadPreflight> _preflightFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _preflightFuture = _loadPreflight();
+  }
+
+  Future<_ChatUploadPreflight> _loadPreflight() async {
+    final clientConfig = await Result.capture(widget.room.client.getConfig());
+    final maxUploadSize = ChatUploadLimits.resolveMaxUploadSize(
+      clientConfig.asValue?.value.mUploadSize,
+    );
+    final files = await Future.wait(
+      widget.files.map(
+        (file) async => _ChatUploadFileInfo(length: await file.length()),
+      ),
+    );
+    return _ChatUploadPreflight(maxUploadSize: maxUploadSize, files: files);
+  }
+
+  bool _willTryVideoCompression(String? mimeType, int length) =>
+      PlatformInfos.isMobile &&
+      mimeType != null &&
+      mimeType.startsWith('video') &&
+      length > minSizeToCompress &&
+      compress;
 
   Future<void> _send() async {
     final scaffoldMessenger = ScaffoldMessenger.of(widget.outerContext);
@@ -53,15 +80,27 @@ class SendFileDialogState extends State<SendFileDialog> {
       }
       scaffoldMessenger.showLoadingSnackBar(l10n.prepareSendingAttachment);
       Navigator.of(context, rootNavigator: false).pop();
-      final clientConfig = await Result.capture(widget.room.client.getConfig());
-      final maxUploadSize =
-          clientConfig.asValue?.value.mUploadSize ?? 100 * 1000 * 1000;
+      final preflight = await _preflightFuture;
+      final maxUploadSize = preflight.maxUploadSize;
 
-      for (final xfile in widget.files) {
+      for (var index = 0; index < widget.files.length; index++) {
+        final xfile = widget.files[index];
         final MatrixFile file;
         MatrixImageFile? thumbnail;
-        final length = await xfile.length();
+        final length = preflight.files[index].length;
         final mimeType = xfile.mimeType ?? lookupMimeType(xfile.path);
+        final willTryVideoCompression = _willTryVideoCompression(
+          mimeType,
+          length,
+        );
+
+        if (ChatUploadLimits.shouldBlockBeforeUpload(
+          fileSize: length,
+          maxUploadSize: maxUploadSize,
+          willCompressBeforeUpload: willTryVideoCompression,
+        )) {
+          throw FileTooBigMatrixException(length, maxUploadSize);
+        }
 
         // Generate video thumbnail
         if (PlatformInfos.isMobile &&
@@ -80,9 +119,6 @@ class SendFileDialogState extends State<SendFileDialog> {
             compress: length > minSizeToCompress && compress,
           );
         } else {
-          if (length > maxUploadSize) {
-            throw FileTooBigMatrixException(length, maxUploadSize);
-          }
           // Else we just create a MatrixFile
           file = MatrixFile(
             bytes: await xfile.readAsBytes(),
@@ -97,10 +133,7 @@ class SendFileDialogState extends State<SendFileDialog> {
 
         if (widget.files.length > 1) {
           scaffoldMessenger.showLoadingSnackBar(
-            l10n.sendingAttachmentCountOfCount(
-              widget.files.indexOf(xfile) + 1,
-              widget.files.length,
-            ),
+            l10n.sendingAttachmentCountOfCount(index + 1, widget.files.length),
           );
         }
 
@@ -166,13 +199,6 @@ class SendFileDialogState extends State<SendFileDialog> {
     return;
   }
 
-  Future<String> _calcCombinedFileSize() async {
-    final lengths = await Future.wait(
-      widget.files.map((file) => file.length()),
-    );
-    return lengths.fold<double>(0, (p, length) => p + length).sizeString;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -208,11 +234,20 @@ class SendFileDialogState extends State<SendFileDialog> {
     final compressionSupported =
         uniqueFileType != 'video' || PlatformInfos.isMobile;
 
-    return FutureBuilder<String>(
-      future: _calcCombinedFileSize(),
+    return FutureBuilder<_ChatUploadPreflight>(
+      future: _preflightFuture,
       builder: (context, snapshot) {
+        final preflight = snapshot.data;
         final sizeString =
-            snapshot.data ?? L10n.of(context).calculatingFileSize;
+            preflight?.combinedSizeString ??
+            L10n.of(context).calculatingFileSize;
+        final oversizedFiles = preflight?.oversizedFiles ?? const [];
+        final canTryCompression =
+            uniqueFileType == 'video' &&
+            PlatformInfos.isMobile &&
+            compressionSupported &&
+            compress;
+        final blocksSend = oversizedFiles.isNotEmpty && !canTryCompression;
 
         return AlertDialog.adaptive(
           title: Text(sendStr),
@@ -223,7 +258,19 @@ class SendFileDialogState extends State<SendFileDialog> {
                 mainAxisSize: .min,
                 children: [
                   const SizedBox(height: 12),
-                  if (uniqueFileType == 'image')
+                  if (uniqueFileType == 'image' && preflight == null)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16.0),
+                      child: SizedBox(
+                        height: 256,
+                        child: Center(
+                          child: CircularProgressIndicator.adaptive(),
+                        ),
+                      ),
+                    ),
+                  if (uniqueFileType == 'image' &&
+                      preflight != null &&
+                      !blocksSend)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: SizedBox(
@@ -301,7 +348,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                         ),
                       ),
                     ),
-                  if (uniqueFileType != 'image')
+                  if (uniqueFileType != 'image' || blocksSend)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: Row(
@@ -404,6 +451,14 @@ class SendFileDialogState extends State<SendFileDialog> {
                         ),
                       ],
                     ),
+                  if (preflight != null && oversizedFiles.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: _UploadLimitWarning(
+                        maxUploadSize: preflight.maxUploadSize,
+                        canTryCompression: canTryCompression,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -415,12 +470,89 @@ class SendFileDialogState extends State<SendFileDialog> {
               child: Text(L10n.of(context).cancel),
             ),
             AdaptiveDialogAction(
-              onPressed: _send,
+              onPressed: preflight == null || blocksSend ? null : _send,
               child: Text(L10n.of(context).send),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+class _ChatUploadPreflight {
+  final int maxUploadSize;
+  final List<_ChatUploadFileInfo> files;
+
+  const _ChatUploadPreflight({
+    required this.maxUploadSize,
+    required this.files,
+  });
+
+  List<_ChatUploadFileInfo> get oversizedFiles => files
+      .where(
+        (file) => ChatUploadLimits.isOverLimit(
+          fileSize: file.length,
+          maxUploadSize: maxUploadSize,
+        ),
+      )
+      .toList(growable: false);
+
+  String get combinedSizeString => ChatUploadLimits.formatBytes(
+    files.fold<int>(0, (total, file) => total + file.length),
+  );
+}
+
+class _ChatUploadFileInfo {
+  final int length;
+
+  const _ChatUploadFileInfo({required this.length});
+}
+
+class _UploadLimitWarning extends StatelessWidget {
+  final int maxUploadSize;
+  final bool canTryCompression;
+
+  const _UploadLimitWarning({
+    required this.maxUploadSize,
+    required this.canTryCompression,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final max = ChatUploadLimits.formatBytes(maxUploadSize);
+    final text = canTryCompression
+        ? 'This video is larger than the $max chat limit. LetsYak will try to compress it before uploading; if it is still too large, it will not be sent.'
+        : L10n.of(context).fileIsTooBigForServer(max);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(AppConfig.borderRadius / 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 20,
+              color: theme.colorScheme.onErrorContainer,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -30,8 +30,12 @@ class _VaultShareDialogState extends State<VaultShareDialog> {
   Future<void> _createShare() async {
     setState(() => _loading = true);
     try {
-      final client = Matrix.of(context).client;
-      final api = VaultApi(matrixClient: client);
+      final matrix = Matrix.of(context);
+      final client = matrix.client;
+      final api = VaultApi(
+        matrixClient: client,
+        baseUrl: matrix.activeWorkspace?.vaultApiUrl,
+      );
       final share = await api.createShare(
         objectKey: widget.file.path,
         fileName: widget.file.name,

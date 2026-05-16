@@ -78,6 +78,10 @@ enum AppSettings<T> {
   vaultApiBaseUrl<String>(
     'com.letsyak.vault_api_base_url',
     'https://vault-api.maybery.app',
+  ),
+  controlPlaneBaseUrl<String>(
+    'com.letsyak.control_plane_base_url',
+    'https://control.maybery.app',
   );
 
   final String key;
@@ -93,6 +97,7 @@ enum AppSettings<T> {
     AppSettings.defaultHomeserver,
     AppSettings.pushNotificationsGatewayUrl,
     AppSettings.vaultApiBaseUrl,
+    AppSettings.controlPlaneBaseUrl,
   };
 
   static SharedPreferences get store => _store!;

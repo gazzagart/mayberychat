@@ -137,6 +137,169 @@ class VaultQuota {
   );
 }
 
+class VaultOrganization {
+  final String id;
+  final String name;
+  final String slug;
+  final String ownerUserId;
+  final String storagePlan;
+  final int seatLimit;
+  final int storageQuotaBytes;
+  final String role;
+  final String status;
+  final String assignedTier;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const VaultOrganization({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.ownerUserId,
+    required this.storagePlan,
+    required this.seatLimit,
+    required this.storageQuotaBytes,
+    required this.role,
+    required this.status,
+    required this.assignedTier,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  bool get isOwner => role == 'owner';
+
+  bool get isAdmin => role == 'admin';
+
+  bool get canManageOrganization => isOwner || isAdmin;
+
+  String get roleLabel => _titleCase(role);
+
+  factory VaultOrganization.fromJson(Map<String, dynamic> json) =>
+      VaultOrganization(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        slug: json['slug'] as String,
+        ownerUserId: json['owner_user_id'] as String,
+        storagePlan: json['storage_plan'] as String? ?? 'manual',
+        seatLimit: _intFromJson(json['seat_limit'], 0),
+        storageQuotaBytes: _intFromJson(json['storage_quota_bytes'], 0),
+        role: json['role'] as String? ?? 'member',
+        status: json['status'] as String? ?? 'active',
+        assignedTier: json['assigned_tier'] as String? ?? 'free',
+        createdAt: DateTime.parse(
+          json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+        ),
+        updatedAt: DateTime.parse(
+          json['updated_at'] as String? ?? DateTime.now().toIso8601String(),
+        ),
+      );
+}
+
+class VaultOrganizationMember {
+  final String orgId;
+  final String matrixUserId;
+  final String role;
+  final String status;
+  final String assignedTier;
+  final int usedBytes;
+  final int quotaBytes;
+  final String vaultTier;
+  final String? limitLabel;
+  final bool isOverQuota;
+  final DateTime createdAt;
+  final DateTime? removedAt;
+
+  const VaultOrganizationMember({
+    required this.orgId,
+    required this.matrixUserId,
+    required this.role,
+    required this.status,
+    required this.assignedTier,
+    required this.usedBytes,
+    required this.quotaBytes,
+    required this.vaultTier,
+    this.limitLabel,
+    required this.isOverQuota,
+    required this.createdAt,
+    this.removedAt,
+  });
+
+  bool get isOwner => role == 'owner';
+
+  bool get isAdmin => role == 'admin';
+
+  String get roleLabel => _titleCase(role);
+
+  String get planLabel => _titleCase(assignedTier);
+
+  String get usedString => usedBytes.toDouble().sizeString;
+
+  String get quotaString => quotaBytes.toDouble().sizeString;
+
+  String get displayLimitLabel => limitLabel ?? quotaString;
+
+  factory VaultOrganizationMember.fromJson(Map<String, dynamic> json) =>
+      VaultOrganizationMember(
+        orgId: json['org_id'] as String,
+        matrixUserId: json['matrix_user_id'] as String,
+        role: json['role'] as String? ?? 'member',
+        status: json['status'] as String? ?? 'active',
+        assignedTier: json['assigned_tier'] as String? ?? 'free',
+        usedBytes: _intFromJson(json['used_bytes'], 0),
+        quotaBytes: _intFromJson(json['quota_bytes'], 0),
+        vaultTier: json['vault_tier'] as String? ?? 'free',
+        limitLabel: json['limit_label'] as String?,
+        isOverQuota: json['is_over_quota'] as bool? ?? false,
+        createdAt: DateTime.parse(
+          json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+        ),
+        removedAt: json['removed_at'] != null
+            ? DateTime.parse(json['removed_at'] as String)
+            : null,
+      );
+}
+
+class VaultOrganizationUsage {
+  final String orgId;
+  final int activeMembers;
+  final int assignedPlusSeats;
+  final int totalUsedBytes;
+  final int totalQuotaBytes;
+  final int overQuotaMembers;
+  final List<VaultOrganizationMember> members;
+
+  const VaultOrganizationUsage({
+    required this.orgId,
+    required this.activeMembers,
+    required this.assignedPlusSeats,
+    required this.totalUsedBytes,
+    required this.totalQuotaBytes,
+    required this.overQuotaMembers,
+    required this.members,
+  });
+
+  String get totalUsedString => totalUsedBytes.toDouble().sizeString;
+
+  String get totalQuotaString => totalQuotaBytes.toDouble().sizeString;
+
+  factory VaultOrganizationUsage.fromJson(
+    Map<String, dynamic> json,
+  ) => VaultOrganizationUsage(
+    orgId: json['org_id'] as String,
+    activeMembers: _intFromJson(json['active_members'], 0),
+    assignedPlusSeats: _intFromJson(json['assigned_plus_seats'], 0),
+    totalUsedBytes: _intFromJson(json['total_used_bytes'], 0),
+    totalQuotaBytes: _intFromJson(json['total_quota_bytes'], 0),
+    overQuotaMembers: _intFromJson(json['over_quota_members'], 0),
+    members: ((json['members'] as List?) ?? const [])
+        .map(
+          (member) =>
+              VaultOrganizationMember.fromJson(member as Map<String, dynamic>),
+        )
+        .toList(),
+  );
+}
+
 int _intFromJson(Object? value, int fallback) => switch (value) {
   int() => value,
   num() => value.toInt(),

@@ -47,6 +47,16 @@ class VaultPageController extends State<VaultPage>
   String? sharedWithMeError;
   StreamSubscription? _vaultSyncSub;
 
+  // Organisation tab state
+  List<VaultOrganization> organizations = [];
+  VaultOrganization? selectedOrganization;
+  VaultOrganizationUsage? organizationUsage;
+  bool organizationLoading = false;
+  String? organizationError;
+
+  bool get canCreateWorkspaceTeam =>
+      selectedOrganization?.canManageOrganization == true;
+
   // Multi-select state
   final Set<String> selectedPaths = {};
   bool get isSelecting => selectedPaths.isNotEmpty;
@@ -71,7 +81,7 @@ class VaultPageController extends State<VaultPage>
   @override
   void initState() {
     super.initState();
-    tabController = TabController(length: 2, vsync: this);
+    tabController = TabController(length: 3, vsync: this);
     tabController.addListener(() {
       // Load shared-with-me on first switch to that tab.
       if (tabController.index == 1 &&
@@ -79,6 +89,12 @@ class VaultPageController extends State<VaultPage>
           sharedWithMe.isEmpty &&
           !sharedWithMeLoading) {
         refreshSharedWithMe();
+      }
+      if (tabController.index == 2 &&
+          !tabController.indexIsChanging &&
+          organizations.isEmpty &&
+          !organizationLoading) {
+        refreshOrganizations();
       }
     });
     _vaultSyncSub = Matrix.of(context).client.onSync.stream
@@ -111,8 +127,12 @@ class VaultPageController extends State<VaultPage>
   }
 
   Future<void> _init() async {
-    final client = Matrix.of(context).client;
-    api = VaultApi(matrixClient: client);
+    final matrix = Matrix.of(context);
+    final client = matrix.client;
+    api = VaultApi(
+      matrixClient: client,
+      baseUrl: matrix.activeWorkspace?.vaultApiUrl,
+    );
     Logs().i('[VaultPage] Using vault API base URL: ${api.baseUrl}');
     Logs().i('[VaultPage] Matrix homeserver: ${client.homeserver}');
     Logs().i(
@@ -127,6 +147,16 @@ class VaultPageController extends State<VaultPage>
       );
     }
     await refresh();
+  }
+
+  Future<void> refreshActiveTab() {
+    if (widget.pickerMode || tabController.index == 0) {
+      return refresh();
+    }
+    if (tabController.index == 1) {
+      return refreshSharedWithMe();
+    }
+    return refreshOrganizations();
   }
 
   Future<void> refresh() async {
@@ -196,6 +226,252 @@ class VaultPageController extends State<VaultPage>
       return 'Vault could not load shared files right now. Please retry.';
     }
     return error.message;
+  }
+
+  Future<void> refreshOrganizations() async {
+    setState(() {
+      organizationLoading = true;
+      organizationError = null;
+    });
+    try {
+      final loadedOrganizations = await api.listOrganizations();
+      VaultOrganization? selected;
+      if (loadedOrganizations.isNotEmpty) {
+        selected = loadedOrganizations.firstWhere(
+          (org) => org.id == selectedOrganization?.id,
+          orElse: () => loadedOrganizations.first,
+        );
+      }
+
+      VaultOrganizationUsage? usage;
+      if (selected?.canManageOrganization == true) {
+        usage = await api.getOrganizationUsage(orgId: selected!.id);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        organizations = loadedOrganizations;
+        selectedOrganization = selected;
+        organizationUsage = usage;
+        organizationLoading = false;
+      });
+    } on VaultApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        organizationError = e.message;
+        organizationLoading = false;
+      });
+    }
+  }
+
+  Future<void> createOrganization() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set up team'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Team name'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Set up'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.trim().isEmpty) return;
+
+    try {
+      final org = await api.createOrganization(name: name.trim());
+      if (!mounted) return;
+      setState(() => selectedOrganization = org);
+      await refreshOrganizations();
+    } on VaultApiException catch (e) {
+      _showOrgError(e.message);
+    }
+  }
+
+  Future<void> addOrganizationMember() async {
+    final org = selectedOrganization;
+    if (org == null) return;
+
+    final result = await _showMemberDialog(org);
+    if (result == null) return;
+    try {
+      await api.addOrganizationMember(
+        orgId: org.id,
+        matrixUserId: result.matrixUserId,
+        role: result.role,
+        assignedTier: result.assignedTier,
+      );
+      await refreshOrganizations();
+    } on VaultApiException catch (e) {
+      _showOrgError(e.message);
+    }
+  }
+
+  Future<void> changeOrganizationMemberRole(
+    VaultOrganizationMember member,
+    String role,
+  ) async {
+    try {
+      await api.updateOrganizationMemberRole(
+        orgId: member.orgId,
+        matrixUserId: member.matrixUserId,
+        role: role,
+      );
+      await refreshOrganizations();
+    } on VaultApiException catch (e) {
+      _showOrgError(e.message);
+    }
+  }
+
+  Future<void> changeOrganizationMemberTier(
+    VaultOrganizationMember member,
+    String tier,
+  ) async {
+    try {
+      await api.updateOrganizationMemberTier(
+        orgId: member.orgId,
+        matrixUserId: member.matrixUserId,
+        assignedTier: tier,
+      );
+      await refreshOrganizations();
+    } on VaultApiException catch (e) {
+      _showOrgError(e.message);
+    }
+  }
+
+  Future<void> removeOrganizationMember(VaultOrganizationMember member) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog.adaptive(
+        title: const Text('Remove member?'),
+        content: Text(
+          'Remove ${member.matrixUserId} from this workspace team? Their Matrix account and Vault files will not be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await api.removeOrganizationMember(
+        orgId: member.orgId,
+        matrixUserId: member.matrixUserId,
+      );
+      await refreshOrganizations();
+    } on VaultApiException catch (e) {
+      _showOrgError(e.message);
+    }
+  }
+
+  Future<_OrgMemberFormResult?> _showMemberDialog(VaultOrganization org) {
+    final userController = TextEditingController();
+    var role = 'member';
+    var tier = 'free';
+    return showDialog<_OrgMemberFormResult>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add workspace member'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: userController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Matrix user ID',
+                  hintText: '@name:example.com',
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: role,
+                decoration: const InputDecoration(labelText: 'Role'),
+                items: [
+                  const DropdownMenuItem(
+                    value: 'member',
+                    child: Text('Member'),
+                  ),
+                  if (org.isOwner)
+                    const DropdownMenuItem(
+                      value: 'admin',
+                      child: Text('Admin'),
+                    ),
+                  if (org.isOwner)
+                    const DropdownMenuItem(
+                      value: 'owner',
+                      child: Text('Owner'),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => role = value ?? 'member'),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: tier,
+                decoration: const InputDecoration(labelText: 'Vault tier'),
+                items: const [
+                  DropdownMenuItem(value: 'free', child: Text('Free')),
+                  DropdownMenuItem(value: 'plus', child: Text('Plus')),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => tier = value ?? 'free'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final userId = userController.text.trim();
+                if (userId.isEmpty) return;
+                Navigator.of(context).pop(
+                  _OrgMemberFormResult(
+                    matrixUserId: userId,
+                    role: role,
+                    assignedTier: tier,
+                  ),
+                );
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(userController.dispose);
+  }
+
+  void _showOrgError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void navigateToFolder(VaultFile folder) {
@@ -553,4 +829,16 @@ class VaultPageController extends State<VaultPage>
 
   @override
   Widget build(BuildContext context) => VaultPageView(this);
+}
+
+class _OrgMemberFormResult {
+  final String matrixUserId;
+  final String role;
+  final String assignedTier;
+
+  const _OrgMemberFormResult({
+    required this.matrixUserId,
+    required this.role,
+    required this.assignedTier,
+  });
 }

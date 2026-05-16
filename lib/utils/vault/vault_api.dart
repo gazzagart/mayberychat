@@ -229,6 +229,126 @@ class VaultApi {
         .toList();
   }
 
+  // ── Organisations ────────────────────────────────────────────────
+
+  Future<VaultOrganization> createOrganization({required String name}) async {
+    final response = await httpClient.post(
+      _uri('/api/v1/orgs'),
+      headers: _headers,
+      body: json.encode({'name': name}),
+    );
+    _ensureSuccess(response);
+    return VaultOrganization.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<VaultOrganization>> listOrganizations() async {
+    final response = await httpClient.get(
+      _uri('/api/v1/orgs'),
+      headers: _headers,
+    );
+    _ensureSuccess(response);
+    final list = json.decode(response.body) as List;
+    return list
+        .map((e) => VaultOrganization.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<VaultOrganizationMember>> listOrganizationMembers({
+    required String orgId,
+  }) async {
+    final response = await httpClient.get(
+      _uri('/api/v1/orgs/$orgId/members'),
+      headers: _headers,
+    );
+    _ensureSuccess(response);
+    final list = json.decode(response.body) as List;
+    return list
+        .map((e) => VaultOrganizationMember.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<VaultOrganizationMember> addOrganizationMember({
+    required String orgId,
+    required String matrixUserId,
+    String role = 'member',
+    String assignedTier = 'free',
+  }) async {
+    final response = await httpClient.post(
+      _uri('/api/v1/orgs/$orgId/members'),
+      headers: _headers,
+      body: json.encode({
+        'matrix_user_id': matrixUserId,
+        'role': role,
+        'assigned_tier': assignedTier,
+      }),
+    );
+    _ensureSuccess(response);
+    return VaultOrganizationMember.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<VaultOrganizationMember> updateOrganizationMemberRole({
+    required String orgId,
+    required String matrixUserId,
+    required String role,
+  }) async {
+    final encodedUserId = Uri.encodeComponent(matrixUserId);
+    final response = await httpClient.post(
+      _uri('/api/v1/orgs/$orgId/members/$encodedUserId/role'),
+      headers: _headers,
+      body: json.encode({'role': role}),
+    );
+    _ensureSuccess(response);
+    return VaultOrganizationMember.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<VaultOrganizationMember> updateOrganizationMemberTier({
+    required String orgId,
+    required String matrixUserId,
+    required String assignedTier,
+  }) async {
+    final encodedUserId = Uri.encodeComponent(matrixUserId);
+    final response = await httpClient.post(
+      _uri('/api/v1/orgs/$orgId/members/$encodedUserId/tier'),
+      headers: _headers,
+      body: json.encode({'assigned_tier': assignedTier}),
+    );
+    _ensureSuccess(response);
+    return VaultOrganizationMember.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> removeOrganizationMember({
+    required String orgId,
+    required String matrixUserId,
+  }) async {
+    final encodedUserId = Uri.encodeComponent(matrixUserId);
+    final response = await httpClient.delete(
+      _uri('/api/v1/orgs/$orgId/members/$encodedUserId'),
+      headers: _headers,
+    );
+    _ensureSuccess(response);
+  }
+
+  Future<VaultOrganizationUsage> getOrganizationUsage({
+    required String orgId,
+  }) async {
+    final response = await httpClient.get(
+      _uri('/api/v1/orgs/$orgId/usage'),
+      headers: _headers,
+    );
+    _ensureSuccess(response);
+    return VaultOrganizationUsage.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────
 
   void _ensureSuccess(http.Response response) {

@@ -1,3 +1,5 @@
+import 'package:fluffychat/utils/workspace/workspace_models.dart';
+
 class PublicHomeserverData {
   final String? name;
   final String? clientDomain;
@@ -22,6 +24,7 @@ class PublicHomeserverData {
   final int? roomDirectory;
   final bool? slidingSync;
   final bool? ipv6;
+  final WorkspaceConfig? workspace;
 
   PublicHomeserverData({
     this.name,
@@ -47,7 +50,30 @@ class PublicHomeserverData {
     this.roomDirectory,
     this.slidingSync,
     this.ipv6,
+    this.workspace,
   });
+
+  String get displayName => workspace?.displayName ?? name ?? 'Unknown';
+
+  String get homeserverLabel {
+    if (workspace == null) return description ?? 'A Matrix homeserver';
+    final uri = Uri.tryParse(workspace!.homeserverUrl);
+    return uri?.host.isNotEmpty == true ? uri!.host : workspace!.homeserverUrl;
+  }
+
+  factory PublicHomeserverData.fromWorkspace(WorkspaceConfig workspace) {
+    return PublicHomeserverData(
+      name: workspace.homeserverUrl,
+      website: workspace.branding.supportUrl,
+      description: workspace.displayName,
+      features: [
+        workspace.isolationTier,
+        workspace.securityMode,
+        if (workspace.hasVault) 'vault',
+      ],
+      workspace: workspace,
+    );
+  }
 
   factory PublicHomeserverData.fromJson(Map<String, dynamic> json) {
     return PublicHomeserverData(

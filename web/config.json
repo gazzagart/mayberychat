@@ -1,5 +1,6 @@
 {
   "applicationName": "LetsYak",
-  "defaultHomeserver": "https://chat.maybery.app",
-  "vaultApiBaseUrl": "https://vault-api.maybery.app"
+  "defaultHomeserver": "http://localhost:8008",
+  "controlPlaneBaseUrl": "http://localhost:8085",
+  "vaultApiBaseUrl": "http://localhost:8090"
 }

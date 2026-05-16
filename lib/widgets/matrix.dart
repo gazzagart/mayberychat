@@ -10,6 +10,9 @@ import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_file_extension.dar
 import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/utils/uia_request_manager.dart';
 import 'package:fluffychat/utils/voip_plugin.dart';
+import 'package:fluffychat/utils/workspace/workspace_models.dart';
+import 'package:fluffychat/utils/workspace/workspace_routes.dart';
+import 'package:fluffychat/utils/workspace/workspace_session_store.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/fluffy_chat_app.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
@@ -155,19 +158,41 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
               .where((l) => l == LoginState.loggedIn)
               .first
               .then((_) {
-                if (!widget.clients.contains(_loginClientCandidate)) {
-                  widget.clients.add(_loginClientCandidate!);
+                final loggedInClient = _loginClientCandidate;
+                if (loggedInClient == null) return;
+                if (!widget.clients.contains(loggedInClient)) {
+                  widget.clients.add(loggedInClient);
                 }
                 ClientManager.addClientNameToStore(
-                  _loginClientCandidate!.clientName,
+                  loggedInClient.clientName,
                   store,
                 );
-                _registerSubs(_loginClientCandidate!.clientName);
+                _registerSubs(loggedInClient.clientName);
                 _loginClientCandidate = null;
-                FluffyChatApp.router.go('/backup');
+                FluffyChatApp.router.go(
+                  postLoginRouteForClient(loggedInClient),
+                );
               });
     if (widget.clients.isEmpty) widget.clients.add(candidate);
     return candidate;
+  }
+
+  WorkspaceConfig? get activeWorkspace => getWorkspaceForClient(client);
+
+  WorkspaceConfig? getWorkspaceForClient(Client client) {
+    return WorkspaceSessionStore.get(store, client.clientName);
+  }
+
+  Future<void> setWorkspaceForClient(Client client, WorkspaceConfig workspace) {
+    return WorkspaceSessionStore.set(store, client.clientName, workspace);
+  }
+
+  Future<void> removeWorkspaceForClient(Client client) {
+    return WorkspaceSessionStore.remove(store, client.clientName);
+  }
+
+  String postLoginRouteForClient(Client client) {
+    return postLoginRouteForWorkspace(getWorkspaceForClient(client));
   }
 
   Client? getClientByName(String name) =>
@@ -262,6 +287,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           _cancelSubs(c.clientName);
           widget.clients.remove(c);
           ClientManager.removeClientNameFromStore(c.clientName, store);
+          removeWorkspaceForClient(c);
           InitWithRestoreExtension.deleteSessionBackup(name);
 
           if (loggedInWithMultipleClients) {

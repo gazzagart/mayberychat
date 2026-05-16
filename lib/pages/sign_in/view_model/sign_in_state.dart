@@ -14,14 +14,18 @@ class SignInState {
     this.filteredPublicHomeservers = const [],
   });
 
+  static const _keepSelectedHomeserver = Object();
+
   SignInState copyWith({
-    PublicHomeserverData? selectedHomeserver,
+    Object? selectedHomeserver = _keepSelectedHomeserver,
     AsyncSnapshot<List<PublicHomeserverData>>? publicHomeservers,
     AsyncSnapshot<bool>? loginLoading,
     List<PublicHomeserverData>? filteredPublicHomeservers,
   }) {
     return SignInState(
-      selectedHomeserver: selectedHomeserver ?? this.selectedHomeserver,
+      selectedHomeserver: identical(selectedHomeserver, _keepSelectedHomeserver)
+          ? this.selectedHomeserver
+          : selectedHomeserver as PublicHomeserverData?,
       publicHomeservers: publicHomeservers ?? this.publicHomeservers,
       loginLoading: loginLoading ?? this.loginLoading,
       filteredPublicHomeservers:

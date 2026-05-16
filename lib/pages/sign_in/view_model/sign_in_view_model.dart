@@ -1,10 +1,9 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/pages/sign_in/view_model/model/public_homeserver_data.dart';
 import 'package:fluffychat/pages/sign_in/view_model/sign_in_state.dart';
+import 'package:fluffychat/utils/workspace/workspace_api.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:flutter/widgets.dart';
 import 'package:matrix/matrix_api_lite/utils/logs.dart';
@@ -12,95 +11,91 @@ import 'package:matrix/matrix_api_lite/utils/logs.dart';
 class SignInViewModel extends ValueNotifier<SignInState> {
   final MatrixState matrixService;
   final bool signUp;
+  final WorkspaceApi workspaceApi;
   final TextEditingController filterTextController = TextEditingController();
+  Timer? _resolveCooldown;
 
-  SignInViewModel(this.matrixService, {required this.signUp})
-    : super(SignInState()) {
+  SignInViewModel(
+    this.matrixService, {
+    required this.signUp,
+    WorkspaceApi? workspaceApi,
+  }) : workspaceApi = workspaceApi ?? WorkspaceApi(),
+       super(SignInState()) {
     refreshPublicHomeservers();
-    filterTextController.addListener(_filterHomeservers);
+    filterTextController.addListener(_resolveWorkspacesWithCooldown);
   }
 
   @override
   void dispose() {
-    filterTextController.removeListener(_filterHomeservers);
+    _resolveCooldown?.cancel();
+    filterTextController.removeListener(_resolveWorkspacesWithCooldown);
     super.dispose();
   }
 
-  void _filterHomeservers() {
-    final filterText = filterTextController.text.trim().toLowerCase();
-    final filteredPublicHomeservers =
-        value.publicHomeservers.data
-            ?.where(
-              (homeserver) =>
-                  homeserver.name?.toLowerCase().contains(filterText) ?? false,
-            )
-            .toList() ??
-        [];
-    final uri = Uri.tryParse(filterText);
-    final looksLikeServer =
-        filterText.length >= 3 &&
-        (filterText.contains('.') ||
-            filterText == 'localhost' ||
-            (uri != null && uri.hasScheme && uri.host.isNotEmpty)) &&
-        uri != null &&
-        !filteredPublicHomeservers.any(
-          (homeserver) => homeserver.name == filterText,
-        );
-    if (looksLikeServer) {
-      filteredPublicHomeservers.add(PublicHomeserverData(name: filterText));
+  void _resolveWorkspacesWithCooldown() {
+    _resolveCooldown?.cancel();
+    final query = filterTextController.text.trim();
+    if (query.isEmpty) {
+      _setWorkspaceOptions(const []);
+      return;
     }
-
-    value = value.copyWith(
-      filteredPublicHomeservers: filteredPublicHomeservers,
+    _resolveCooldown = Timer(
+      const Duration(milliseconds: 350),
+      () => resolveWorkspaceQuery(query),
     );
   }
 
-  Future<void> refreshPublicHomeservers() async {
-    value = value.copyWith(publicHomeservers: AsyncSnapshot.waiting());
-    final defaultHomeserverData = PublicHomeserverData(
-      name: AppSettings.defaultHomeserver.value,
+  void refreshPublicHomeservers() {
+    _setWorkspaceOptions(const []);
+  }
+
+  Future<void> resolveWorkspaceQuery(String rawQuery) async {
+    final query = rawQuery.trim();
+    if (query.isEmpty) {
+      _setWorkspaceOptions(const []);
+      return;
+    }
+
+    value = value.copyWith(
+      selectedHomeserver: null,
+      publicHomeservers: AsyncSnapshot.waiting(),
+      filteredPublicHomeservers: const [],
     );
+
     try {
-      final client = await matrixService.getLoginClient();
-      final response = await client.httpClient.get(AppConfig.homeserverList);
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final homeserverJsonList = json['public_servers'] as List;
-
-      final publicHomeservers = homeserverJsonList
-          .map((json) => PublicHomeserverData.fromJson(json))
+      final workspaces = await workspaceApi.resolve(
+        email: _looksLikeEmail(query) ? query : null,
+        slug: _looksLikeEmail(query) ? null : query,
+      );
+      final workspaceOptions = workspaces
+          .map(PublicHomeserverData.fromWorkspace)
           .toList();
-
-      if (signUp) {
-        publicHomeservers.removeWhere((server) {
-          return server.regMethod == null;
-        });
+      final fallbackHomeserver = _fallbackHomeserver(query);
+      if (fallbackHomeserver != null && workspaceOptions.isEmpty) {
+        workspaceOptions.add(fallbackHomeserver);
       }
-
-      final defaultServer = publicHomeservers.singleWhereOrNull(
-        (server) => server.name == AppSettings.defaultHomeserver.value,
-      );
-
-      if (defaultServer == null) {
-        publicHomeservers.insert(0, defaultHomeserverData);
-      }
-
-      value = value.copyWith(
-        selectedHomeserver: value.selectedHomeserver ?? publicHomeservers.first,
-        publicHomeservers: AsyncSnapshot.withData(
-          ConnectionState.done,
-          publicHomeservers,
-        ),
-      );
+      _setWorkspaceOptions(workspaceOptions);
     } catch (e, s) {
-      Logs().w('Unable to fetch public homeservers...', e, s);
+      Logs().w('Unable to resolve LetsYak workspace', e, s);
+      final fallbackHomeserver = _fallbackHomeserver(query);
+      if (fallbackHomeserver != null) {
+        _setWorkspaceOptions([fallbackHomeserver]);
+        return;
+      }
       value = value.copyWith(
-        selectedHomeserver: defaultHomeserverData,
-        publicHomeservers: AsyncSnapshot.withData(ConnectionState.done, [
-          defaultHomeserverData,
-        ]),
+        selectedHomeserver: null,
+        publicHomeservers: AsyncSnapshot.withError(ConnectionState.done, e, s),
+        filteredPublicHomeservers: const [],
       );
     }
-    _filterHomeservers();
+  }
+
+  void _setWorkspaceOptions(List<PublicHomeserverData> options) {
+    value = value.copyWith(
+      selectedHomeserver: options.singleOrNull,
+      publicHomeservers: AsyncSnapshot.withData(ConnectionState.done, options),
+      filteredPublicHomeservers: options,
+    );
   }
 
   void selectHomeserver(PublicHomeserverData? publicHomeserverData) {
@@ -109,5 +104,23 @@ class SignInViewModel extends ValueNotifier<SignInState> {
 
   void setLoginLoading(AsyncSnapshot<bool> loginLoading) {
     value = value.copyWith(loginLoading: loginLoading);
+  }
+
+  bool _looksLikeEmail(String query) {
+    return query.contains('@') && !query.startsWith('@');
+  }
+
+  PublicHomeserverData? _fallbackHomeserver(String query) {
+    if (_looksLikeEmail(query)) return null;
+    final normalizedQuery = query.toLowerCase();
+    final uri = Uri.tryParse(normalizedQuery);
+    final looksLikeServer =
+        normalizedQuery.length >= 3 &&
+        (normalizedQuery.contains('.') ||
+            normalizedQuery == 'localhost' ||
+            (uri != null && uri.hasScheme && uri.host.isNotEmpty)) &&
+        uri != null;
+    if (!looksLikeServer) return null;
+    return PublicHomeserverData(name: query);
   }
 }

@@ -63,4 +63,59 @@ void main() {
     expect(share.downloadCount, 3);
     expect(share.toJson()['object_key'], '/documents/roadmap.pdf');
   });
+
+  test('VaultOrganization parses role and ownership metadata', () {
+    final org = VaultOrganization.fromJson({
+      'id': 'org-1',
+      'name': 'Acme Team',
+      'slug': 'acme-team',
+      'owner_user_id': '@owner:example.test',
+      'storage_plan': 'manual',
+      'seat_limit': 3,
+      'storage_quota_bytes': 0,
+      'role': 'owner',
+      'status': 'active',
+      'assigned_tier': 'free',
+      'created_at': '2026-04-28T10:00:00Z',
+      'updated_at': '2026-04-28T10:00:00Z',
+    });
+
+    expect(org.name, 'Acme Team');
+    expect(org.isOwner, isTrue);
+    expect(org.canManageOrganization, isTrue);
+    expect(org.roleLabel, 'Owner');
+  });
+
+  test('VaultOrganizationUsage parses members and totals', () {
+    final usage = VaultOrganizationUsage.fromJson({
+      'org_id': 'org-1',
+      'active_members': 2,
+      'assigned_plus_seats': 1,
+      'total_used_bytes': 1024,
+      'total_quota_bytes': 2048,
+      'over_quota_members': 0,
+      'members': [
+        {
+          'org_id': 'org-1',
+          'matrix_user_id': '@member:example.test',
+          'role': 'member',
+          'status': 'active',
+          'assigned_tier': 'plus',
+          'used_bytes': 1024,
+          'quota_bytes': 2048,
+          'vault_tier': 'plus',
+          'limit_label': '5 GB',
+          'is_over_quota': false,
+          'created_at': '2026-04-28T10:00:00Z',
+          'removed_at': null,
+        },
+      ],
+    });
+
+    expect(usage.activeMembers, 2);
+    expect(usage.assignedPlusSeats, 1);
+    expect(usage.members.single.matrixUserId, '@member:example.test');
+    expect(usage.members.single.displayLimitLabel, '5 GB');
+    expect(usage.members.single.planLabel, 'Plus');
+  });
 }

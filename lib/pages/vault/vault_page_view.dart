@@ -1,4 +1,5 @@
 import 'package:fluffychat/pages/vault/vault_file_tile.dart';
+import 'package:fluffychat/pages/vault/vault_org_admin_panel.dart';
 import 'package:fluffychat/pages/vault/vault_page.dart';
 import 'package:fluffychat/pages/vault/vault_quota_widget.dart';
 import 'package:fluffychat/pages/vault/vault_shared_tile.dart';
@@ -63,7 +64,7 @@ class VaultPageView extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   tooltip: 'Refresh',
-                  onPressed: controller.refresh,
+                  onPressed: controller.refreshActiveTab,
                 ),
               ],
               bottom: showTabs
@@ -75,13 +76,17 @@ class VaultPageView extends StatelessWidget {
                           icon: Icon(Icons.people_outline),
                           text: 'Shared with me',
                         ),
+                        Tab(
+                          icon: Icon(Icons.admin_panel_settings_outlined),
+                          text: 'Admin',
+                        ),
                       ],
                     )
                   : null,
             ),
       floatingActionButton:
           controller.isSelecting ||
-              (showTabs && controller.tabController.index == 1)
+              (showTabs && controller.tabController.index != 0)
           ? null
           : FloatingActionButton(
               onPressed: controller.uploadFiles,
@@ -94,11 +99,36 @@ class VaultPageView extends StatelessWidget {
               children: [
                 _MyFilesBody(controller: controller),
                 _SharedWithMeBody(controller: controller),
+                _AdminBody(controller: controller),
               ],
             )
           : _MyFilesBody(controller: controller),
     );
   }
+}
+
+// ── Workspace admin tab ──────────────────────────────────────────
+
+class _AdminBody extends StatelessWidget {
+  final VaultPageController controller;
+
+  const _AdminBody({required this.controller});
+
+  @override
+  Widget build(BuildContext context) => VaultOrgAdminPanel(
+    loading: controller.organizationLoading,
+    error: controller.organizationError,
+    organizations: controller.organizations,
+    selectedOrganization: controller.selectedOrganization,
+    usage: controller.organizationUsage,
+    canCreateTeam: controller.canCreateWorkspaceTeam,
+    onRefresh: controller.refreshOrganizations,
+    onCreateOrganization: controller.createOrganization,
+    onAddMember: controller.addOrganizationMember,
+    onRoleChanged: controller.changeOrganizationMemberRole,
+    onTierChanged: controller.changeOrganizationMemberTier,
+    onRemoveMember: controller.removeOrganizationMember,
+  );
 }
 
 // ── My Files tab ──────────────────────────────────────────────────

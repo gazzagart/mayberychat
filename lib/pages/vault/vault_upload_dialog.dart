@@ -39,8 +39,12 @@ class _VaultUploadDialogState extends State<VaultUploadDialog> {
 
   Future<void> _startUpload() async {
     setState(() => _uploading = true);
-    final client = Matrix.of(context).client;
-    final api = VaultApi(matrixClient: client);
+    final matrix = Matrix.of(context);
+    final client = matrix.client;
+    final api = VaultApi(
+      matrixClient: client,
+      baseUrl: matrix.activeWorkspace?.vaultApiUrl,
+    );
     final total = widget.files.length;
 
     // Pre-read all files to calculate total bytes for overall progress

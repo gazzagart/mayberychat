@@ -54,8 +54,12 @@ class VaultFileCard extends StatelessWidget {
     }
 
     try {
-      final client = Matrix.of(context).client;
-      final api = VaultApi(matrixClient: client);
+      final matrix = Matrix.of(context);
+      final client = matrix.client;
+      final api = VaultApi(
+        matrixClient: client,
+        baseUrl: matrix.activeWorkspace?.vaultApiUrl,
+      );
       final downloadUrl = await api.getShareDownloadUrl(shareId: shareId);
       if (!context.mounted) return;
       UrlLauncher(context, downloadUrl).launchUrl();
